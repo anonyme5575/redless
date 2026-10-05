@@ -1,6 +1,6 @@
 # Ne touche pas le rouge
 
-Jeu mobile en portrait, jouable à un doigt. HTML/CSS/JS sans dépendance, emballé en APK Android.
+Jeu mobile en portrait, jouable à un doigt, avec une interface de cockpit holographique (ville sous la pluie, cadres néon, jauges Énergie/Bouclier, radar). HTML/CSS/JS sans dépendance, emballé en APK Android.
 
 ## Règles
 
@@ -11,18 +11,20 @@ Jeu mobile en portrait, jouable à un doigt. HTML/CSS/JS sans dépendance, embal
   - rouge → vert : attends qu'elle passe au vert ;
   - clignotante : alterne vert/rouge à chaque demi-temps.
   Une finte réussie rapporte double.
-- Le tempo de la musique (générée en direct, Web Audio) est l'horloge du jeu. Chaque palier de verts ajoute des BPM (jusqu'à 230), raccourcit la durée de vie des cases et fait apparaître plusieurs cases par temps.
+- **La musique est l'horloge du jeu.** « Sync or Die » (100 BPM) est lue à la vitesse `tempo du jeu / 100` : chaque palier accélère la musique (jusqu'à x2, 200 BPM, hauteur conservée) et les cases tombent sur ses temps. Si le morceau ne peut pas être lu, un beat synthétisé prend le relais.
+- Énergie (vert) = vies ou temps restant ; Bouclier (orange) = progression vers le multiplicateur suivant (x2 à 10 de combo, x3 à 25, x4 à 50).
 
 ## Modes
 
 | Mode | Vies | Départ | Particularité |
 |---|---|---|---|
 | Classique | 3 | 110 BPM | +10 BPM tous les 8 verts, fintes dès le niveau 2 |
-| Chrono | – | 120 BPM | 60 s, rouge = −5 s, accélère aussi avec le temps |
-| Mort subite | 1 | 150 BPM | une erreur et c'est fini |
-| Fintes | 3 | 104 BPM | plus de la moitié des cases sont des fintes |
+| Chrono | – | 115 BPM | 60 s, rouge = −5 s, accélère aussi avec le temps |
+| Mort subite | 1 | 140 BPM | une erreur et c'est fini |
+| Fintes | 3 | 100 BPM | plus de la moitié des cases sont des fintes |
+| Expansion | 3 | 100 BPM | la grille grandit à chaque palier : 2×3 → 3×3 → … → 7×9 |
 
-Pièces = score ÷ 5 + bonus dorés. Boutique : 6 thèmes, 5 effets, 5 formes. Record et classement (top 10 local) par mode.
+Crédits = score ÷ 5 + bonus dorés. Boutique : 6 thèmes, 5 effets, 5 formes. Record et classement (top 10 local) par mode.
 
 ## APK Android
 
@@ -46,6 +48,7 @@ python3 -m http.server 8000   # puis http://localhost:8000
 
 ```
 index.html, css/, js/game.js, fonts/, assets/   le jeu
+audio/sync-or-die.mp3                            la musique (128 kb/s)
 android/                                         wrapper WebView + scripts de build
 dist/ne-touche-pas-le-rouge.apk                  APK prêt à installer
 ```

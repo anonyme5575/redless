@@ -5,14 +5,14 @@ A="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$A")"
 T="$A/.tools"
 OUT="$A/build"
-VERSION_CODE="${VERSION_CODE:-2}"
-VERSION_NAME="${VERSION_NAME:-1.1}"
+VERSION_CODE="${VERSION_CODE:-3}"
+VERSION_NAME="${VERSION_NAME:-2.0}"
 
 [ -x "$T/aapt2" ] || "$A/fetch-tools.sh"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/assets/www" "$OUT/classes"
-cp -r "$ROOT/index.html" "$ROOT/manifest.webmanifest" "$ROOT/css" "$ROOT/js" "$ROOT/fonts" "$ROOT/assets" "$OUT/assets/www/"
+cp -r "$ROOT/index.html" "$ROOT/manifest.webmanifest" "$ROOT/css" "$ROOT/js" "$ROOT/fonts" "$ROOT/assets" "$ROOT/audio" "$OUT/assets/www/"
 
 # Resources + manifest
 "$T/aapt2" compile --dir "$A/res" -o "$OUT/res.zip"
