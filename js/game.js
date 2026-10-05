@@ -4,32 +4,34 @@
   // ---------- config ----------
   const MUSIC = { src: "audio/sync-or-die.mp3", bpm: 100, offset: 0.055 }; // measured on the track
   const MAX_BPM = 200; // = music played at 2x
+  const GLIDE = 7;     // BPM per second: the tempo slides to its new value instead of jumping
+  const CREEP = 0.25;  // BPM per second added between levels, so the music never stops speeding up
 
   // Each mode tunes the same engine. Levels raise the tempo; the tempo is the music's playback speed.
   const MODES = {
     classic: {
       name: "Classique", rule: "3 vies, ça accélère vite",
-      lives: 3, startBpm: 110, bpmStep: 10, greensPerLevel: 8,
+      lives: 3, startBpm: 72, bpmStep: 9, greensPerLevel: 8,
       feint: { from: 2, base: 0.06, step: 0.04, max: 0.32 },
     },
     chrono: {
       name: "Chrono", rule: "60 s, rouge = −5 s",
-      lives: 0, time: 60, redPenalty: 5, startBpm: 115, bpmStep: 10, greensPerLevel: 7,
+      lives: 0, time: 60, redPenalty: 5, startBpm: 80, bpmStep: 12, greensPerLevel: 7,
       feint: { from: 1, base: 0.12, step: 0.03, max: 0.3 },
     },
     sudden: {
       name: "Mort subite", rule: "1 seule vie, départ rapide",
-      lives: 1, startBpm: 140, bpmStep: 10, greensPerLevel: 8,
+      lives: 1, startBpm: 95, bpmStep: 10, greensPerLevel: 8,
       feint: { from: 1, base: 0.15, step: 0.04, max: 0.35 },
     },
     feint: {
       name: "Fintes", rule: "Les cases changent de couleur",
-      lives: 3, startBpm: 100, bpmStep: 8, greensPerLevel: 8,
+      lives: 3, startBpm: 72, bpmStep: 8, greensPerLevel: 8,
       feint: { from: 1, base: 0.55, step: 0.04, max: 0.8 },
     },
     expansion: {
       name: "Expansion", rule: "La grille s'agrandit à chaque palier",
-      lives: 3, startBpm: 100, bpmStep: 8, greensPerLevel: 6,
+      lives: 3, startBpm: 72, bpmStep: 8, greensPerLevel: 6,
       feint: { from: 4, base: 0.08, step: 0.03, max: 0.3 },
       grids: [[2, 3], [3, 3], [3, 4], [4, 4], [4, 5], [4, 6], [5, 6], [5, 7], [6, 7], [6, 8], [7, 9]],
     },
@@ -335,7 +337,7 @@
   function drawRain(dt) {
     const w = rainCv.width / (Math.min(window.devicePixelRatio || 1, 2)), h = rainCv.height / (Math.min(window.devicePixelRatio || 1, 2));
     rainCtx.clearRect(0, 0, w, h);
-    const speed = (G && G.running && !G.paused ? G.bpm / 100 : 0.8) * dt / 16.7;
+    const speed = (G && G.running && !G.paused ? G.bpmNow / 100 : 0.8) * dt / 16.7;
     rainCtx.strokeStyle = rainColor; rainCtx.lineWidth = 1;
     for (const d of drops) {
       d.y += d.v * speed; d.x -= d.v * speed * 0.12;
@@ -428,7 +430,7 @@
       mode: S.mode, M,
       running: false, paused: false, over: false,
       score: 0, combo: 0, maxCombo: 0, lives: M.lives, coins: 0, greens: 0,
-      level: 1, bpm: M.startBpm, beatN: 0, nextBeat: 0, lastBeat: 0, clock: 0, phase: 0,
+      level: 1, bpm: M.startBpm, bpmNow: M.startBpm, bpmShown: M.startBpm, beatN: 0, nextBeat: 0, lastBeat: 0, clock: 0, phase: 0,
       timeLeft: M.time ? M.time * 1000 : 0,
       tiles: new Map(), // cellIndex -> tile
       grid: M.grids ? 0 : -1,
@@ -439,7 +441,7 @@
     $("#mode-tag").textContent = M.name;
     renderHud();
   }
-  const spb = () => 60 / G.bpm; // seconds per beat
+  const spb = () => 60 / G.bpmNow; // seconds per beat, at the tempo the music is playing now
 
   const THRESHOLDS = [0, 10, 25, 50];
   const multiplier = () => (G.combo >= 50 ? 4 : G.combo >= 25 ? 3 : G.combo >= 10 ? 2 : 1);
@@ -451,7 +453,7 @@
     const lo = THRESHOLDS[mult - 1], hi = THRESHOLDS[mult] || lo;
     const shield = mult >= 4 ? 1 : (G.combo - lo) / (hi - lo);
     $("#shield-fill").style.strokeDashoffset = 100 - shield * 100;
-    bpmEl.textContent = G.bpm;
+    bpmEl.textContent = Math.round(G.bpmNow);
     levelEl.textContent = G.level;
     runCoinsEl.textContent = G.coins;
     $("#sweep").style.setProperty("--bar", (4 * spb()).toFixed(2) + "s");
@@ -576,17 +578,16 @@
 
   function levelUp() {
     G.level++;
-    G.bpm = Math.min(MAX_BPM, G.bpm + G.M.bpmStep);
-    Music.setBpm(G.bpm);
+    G.bpm = Math.min(MAX_BPM, Math.round(G.bpm) + G.M.bpmStep);
     Audio.sweep();
     if (G.M.grids && G.grid < G.M.grids.length - 1) {
       G.grid++;
       const [c, r] = G.M.grids[G.grid];
       clearTiles();
       setGrid(c, r, true);
-      banner(`Grille ${c}×${r}`, `${G.bpm} BPM`);
+      banner(`Grille ${c}×${r}`, `${Math.round(G.bpm)} BPM`);
     } else if (G.level === G.M.feint.from && G.M.feint.from > 1) banner("Fintes", "les cases mentent", true);
-    else banner(G.bpm >= MAX_BPM ? "Tempo max" : `${G.bpm} BPM`, `Niveau ${G.level}`);
+    else banner(G.bpm >= MAX_BPM ? "Tempo max" : `${Math.round(G.bpm)} BPM`, `Niveau ${G.level}`);
     renderHud();
   }
 
@@ -660,7 +661,7 @@
     $("#over-sub").textContent = sub || `Niveau ${G.level} atteint`;
     $("#over-coins").textContent = "+" + earned;
     $("#over-combo").textContent = G.maxCombo;
-    $("#over-bpm").textContent = G.bpm;
+    $("#over-bpm").textContent = Math.round(G.bpmNow);
     $("#over-best").hidden = !isBest || G.score === 0;
     const form = $("#name-form"), input = $("#name-input");
     form.hidden = G.score === 0;
@@ -718,6 +719,17 @@
   }
   function tick(dt) {
     G.clock += dt;
+    // Glide toward the target tempo; the music speeds up with it.
+    G.bpm = Math.min(MAX_BPM, G.bpm + CREEP * dt / 1000);
+    if (G.bpmNow < G.bpm) {
+      G.bpmNow = Math.min(G.bpm, G.bpmNow + GLIDE * dt / 1000);
+      if (Math.abs(G.bpmNow - (G.rateBpm || 0)) >= 0.2) { G.rateBpm = G.bpmNow; Music.setBpm(G.bpmNow); }
+      if (Math.round(G.bpmNow) !== G.bpmShown) {
+        G.bpmShown = Math.round(G.bpmNow);
+        bpmEl.textContent = G.bpmShown;
+        $("#sweep").style.setProperty("--bar", (4 * spb()).toFixed(2) + "s");
+      }
+    }
     if (G.M.time) {
       G.timeLeft -= dt;
       // Chrono speeds up with time as well as with greens.
@@ -760,7 +772,7 @@
     show("play");
     sizeCanvases();
     countdown(async () => {
-      await Music.start(G.bpm);
+      await Music.start(G.bpmNow);
       G.running = true; G.nextBeat = G.clock;
     });
   }

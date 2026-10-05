@@ -175,10 +175,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .menu-actions .btn-go { grid-column: 1 / -1; }
 
 /* ---------- play ---------- */
-#play { gap: 8px; }
-.hud { display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 8px; height: 112px; }
+#play { gap: 6px; padding-block: 10px 12px; }
+.hud { display: grid; grid-template-columns: 50px 1fr 50px; align-items: center; gap: 8px; height: 88px; }
 .gauge { position: relative; height: 100%; display: grid; justify-items: center; }
-.gauge svg { width: 36px; height: 92px; overflow: visible; }
+.gauge svg { width: 30px; height: 62px; overflow: visible; }
 .arc-track { fill: none; stroke: var(--holo-dim); stroke-width: 9; }
 .arc-fill  { fill: none; stroke-width: 9; stroke-dasharray: 100; transition: stroke-dashoffset .3s ease-out; }
 .gauge-energy .arc-fill { stroke: var(--green); filter: drop-shadow(0 0 6px var(--green)); }
@@ -189,26 +189,22 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .gauge-shield .g-label { color: var(--warn); }
 .g-value { font-size: 15px; font-weight: 700; }
 .score-frame { height: 100%; display: grid; place-content: center; text-align: center; }
-.hud-score { font-size: 50px; font-weight: 800; line-height: 1; text-shadow: 0 0 16px var(--glow); }
+.hud-score { font-size: 40px; font-weight: 800; line-height: 1; text-shadow: 0 0 16px var(--glow); }
 .hud-score.bump { animation: bump .18s ease-out; }
 @keyframes bump { 40% { transform: scale(1.14); color: var(--green); } }
 .combo { color: var(--warn); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; min-height: 16px; }
 @keyframes blink { 50% { opacity: .25; } }
 
-.board-wrap { flex: 1; min-height: 0; display: grid; place-items: center; position: relative; container-type: size; padding: 6px; }
+.board-wrap { flex: 1; min-height: 0; display: flex; position: relative; }
 .board {
   --cols: 4; --rows: 6; --ar: .6667;
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
   grid-template-rows: repeat(var(--rows), 1fr);
-  gap: 7px; padding: 12px;
-  height: 100%; max-width: 100%;
-  aspect-ratio: var(--ar);
+  gap: 6px; padding: 10px;
+  flex: 1; min-width: 0;
   touch-action: none;
-}
-@supports (width: 1cqw) {
-  .board { width: min(100cqw, 100cqh * var(--ar)); height: auto; }
 }
 .board.pulse .frame-svg .line { stroke-width: 2.6; filter: drop-shadow(0 0 10px var(--holo)); }
 .cell { position: relative; background: var(--cell); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
@@ -260,8 +256,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .beatbar { height: 4px; background: var(--holo-dim); overflow: hidden; margin-inline: 14px; }
 .beatbar i { display: block; height: 100%; width: 100%; background: var(--holo); box-shadow: 0 0 8px var(--holo); transform-origin: left; }
 
-.bottom-hud { display: grid; grid-template-columns: 84px 1fr 42px; gap: 10px; align-items: center; height: 92px; }
-.radar { height: 84px; display: grid; place-content: center; text-align: center; overflow: hidden; }
+.bottom-hud { display: grid; grid-template-columns: 72px 1fr 42px; gap: 10px; align-items: center; height: 70px; }
+.radar { height: 66px; display: grid; place-content: center; text-align: center; overflow: hidden; }
 .radar-grid {
   position: absolute; inset: 6px;
   background:
@@ -277,7 +273,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .radar .num, .radar small { position: relative; }
 .radar .num { font-size: 24px; font-weight: 800; line-height: 1; text-shadow: 0 0 10px var(--glow); }
 .radar small { font-size: 10px; letter-spacing: .2em; color: var(--holo); font-weight: 700; }
-.tactical { margin: 0; display: grid; gap: 1px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.tactical { margin: 0; display: grid; gap: 0; font-size: 12px; line-height: 1.25; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .tactical dt { font-family: var(--font-display); font-size: 14px; color: var(--holo); letter-spacing: .14em; margin-bottom: 2px; text-shadow: 0 0 8px var(--glow); }
 .tactical dd { margin: 0; display: flex; justify-content: space-between; gap: 8px; }
 .tactical b { color: var(--ink); font-weight: 700; }
