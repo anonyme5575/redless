@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#12151d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<!-- artifact:start -->
+<title>Ne touche pas le rouge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Semi+Condensed:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<!-- artifact:head-end -->
+</head>
+<body>
+<div id="app" data-skin="minuit" data-shape="carre">
+
+  <!-- MENU -->
+  <section class="screen" id="menu">
+    <div class="menu-top">
+      <div class="profile">
+        <div class="avatar" role="img" aria-label="Ton joueur"></div>
+        <span class="coins"><span class="coin"></span><span class="num" data-bind="coins">0</span></span>
+      </div>
+      <button class="icon-btn" id="btn-sound" aria-label="Couper le son"></button>
+    </div>
+    <div class="menu-hero">
+      <div class="menu-player" role="img" aria-label="Le joueur en hoodie noir et baskets"></div>
+      <h1 class="title">Ne touche<br>pas le<span class="t-red">rouge</span>
+        <small>Touche les cases vertes. Une seule case rouge et c'est fini.</small>
+      </h1>
+    </div>
+    <div class="menu-stats">
+      <div><span class="label">Record</span><span class="num" data-bind="best">0</span></div>
+      <div><span class="label">Parties</span><span class="num" data-bind="games">0</span></div>
+    </div>
+    <div class="menu-actions">
+      <button class="btn btn-go" id="btn-play">Jouer</button>
+      <button class="btn" id="btn-shop">Boutique</button>
+      <button class="btn" id="btn-board">Classement</button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="play" hidden>
+    <div class="hud">
+      <div class="hud-left">
+        <div class="hearts" id="hearts" aria-label="Vies"></div>
+        <span class="combo" id="combo"></span>
+      </div>
+      <div class="hud-score num" id="score" aria-live="polite">0</div>
+      <div class="hud-right">
+        <span class="chip" id="bpm">96 BPM</span>
+        <span class="coins"><span class="coin"></span><span class="num" id="run-coins">0</span></span>
+      </div>
+    </div>
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+      <div class="levelup" id="levelup"></div>
+    </div>
+    <div class="beatbar"><i id="beat"></i></div>
+    <div class="topbar">
+      <span class="label" id="level">Niveau 1</span>
+      <button class="icon-btn" id="btn-pause" aria-label="Pause"></button>
+    </div>
+    <div class="countdown" id="countdown" hidden></div>
+    <div class="pause-overlay" id="paused" hidden>
+      <div class="pause-card">
+        <h3>Pause</h3>
+        <button class="btn btn-go" id="btn-resume">Reprendre</button>
+        <button class="btn" id="btn-quit">Quitter la partie</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME OVER -->
+  <section class="screen" id="over" hidden>
+    <div class="over-head">
+      <div class="avatar" role="img" aria-label="Ton joueur"></div>
+      <div>
+        <h2 id="over-title">Rouge touché</h2>
+        <p id="over-sub">Niveau 1 atteint</p>
+      </div>
+    </div>
+    <div>
+      <span class="label">Score</span>
+      <div class="over-score num" id="over-score">0</div>
+      <span class="new-best" id="over-best" hidden>Nouveau record</span>
+    </div>
+    <div class="over-grid">
+      <div class="stat"><span class="label">Pièces</span><span class="num" id="over-coins">+0</span></div>
+      <div class="stat"><span class="label">Combo max</span><span class="num" id="over-combo">0</span></div>
+      <div class="stat"><span class="label">Tempo</span><span class="num" id="over-bpm">96</span></div>
+    </div>
+    <form class="name-row" id="name-form">
+      <input id="name-input" maxlength="14" placeholder="Ton pseudo" autocomplete="nickname" aria-label="Pseudo pour le classement">
+      <button class="btn" type="submit">Enregistrer</button>
+    </form>
+    <div class="over-actions">
+      <button class="btn btn-go" id="btn-again">Rejouer</button>
+      <button class="btn" id="btn-over-shop">Boutique</button>
+      <button class="btn" id="btn-over-menu">Menu</button>
+    </div>
+  </section>
+
+  <!-- SHOP -->
+  <section class="screen" id="shop" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Boutique</h2>
+      <span class="coins"><span class="coin"></span><span class="num" data-bind="coins">0</span></span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-cat="skin" aria-selected="true">Thèmes</button>
+      <button class="tab" role="tab" data-cat="fx" aria-selected="false">Effets</button>
+      <button class="tab" role="tab" data-cat="shape" aria-selected="false">Formes</button>
+    </div>
+    <div class="shop-list" id="shop-list"></div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="screen" id="ranking" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Classement</h2>
+      <span style="width:44px"></span>
+    </div>
+    <ol class="board-list" id="board-list"></ol>
+    <p class="note">Classement enregistré sur cet appareil.</p>
+  </section>
+
+  <canvas id="fx"></canvas>
+  <div class="flash" id="flash"></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script src="js/game.js"></script>
+</body>
+</html>
