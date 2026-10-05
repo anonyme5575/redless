@@ -1,5 +1,8 @@
-node_modules/
+*.bundle
+*.jks
+*.keystore
 .DS_Store
 android/.tools/
 android/build/
-*.bundle
+dist/*.aab
+node_modules/
