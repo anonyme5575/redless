@@ -20,17 +20,29 @@
   <!-- MENU -->
   <section class="screen" id="menu">
     <div class="menu-top">
-      <span class="sys">Système <b>en ligne</b></span>
+      <button class="rank-badge" id="btn-rank" aria-label="Rang">
+        <span class="label">Rang</span>
+        <b id="rank-name">Recrue</b>
+        <span class="xpbar"><i id="rank-bar"></i></span>
+      </button>
       <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
+      <button class="icon-btn" id="btn-settings" aria-label="Réglages"></button>
       <button class="icon-btn" id="btn-sound" aria-label="Couper le son"></button>
     </div>
     <div class="menu-hero" data-frame="hex">
       <div class="demo" id="demo" aria-hidden="true"></div>
     </div>
     <h1 class="title"><span class="glitch" data-text="Ne touche pas le">Ne touche pas le</span> <span class="t-red glitch" data-text="rouge">rouge</span></h1>
+    <button class="daily" id="btn-daily" data-frame="sm">
+      <span class="daily-head"><span class="label">Défi du jour</span><b id="daily-date"></b></span>
+      <span class="daily-state" id="daily-state">Pas encore joué</span>
+    </button>
     <div class="modes" id="modes" role="radiogroup" aria-label="Mode de jeu"></div>
+    <p class="mode-rule" id="mode-rule"></p>
     <div class="menu-actions">
       <button class="btn btn-go" id="btn-play">Jouer</button>
+      <button class="btn" id="btn-missions" data-frame="sm">Missions <span class="pill" id="missions-pill" hidden></span></button>
+      <button class="btn" id="btn-duel" data-frame="sm">Duel</button>
       <button class="btn" id="btn-shop" data-frame="sm">Boutique</button>
       <button class="btn" id="btn-board" data-frame="sm">Classement</button>
     </div>
@@ -45,7 +57,7 @@
         <span class="g-value num" id="energy-val">3</span>
       </div>
       <div class="score-frame" data-frame="hex">
-        <span class="label">Score</span>
+        <span class="label" id="score-label">Score</span>
         <div class="hud-score num" id="score" aria-live="polite">0</div>
         <span class="combo" id="combo"></span>
       </div>
@@ -58,19 +70,19 @@
     <div class="board-wrap">
       <div class="board" id="board" data-frame="board"></div>
     </div>
-    <div class="beatbar"><i id="beat"></i></div>
+    <div class="beatbar" id="beatbar"><i id="beat"></i></div>
     <div class="bottom-hud">
       <div class="radar" data-frame="sm">
         <div class="radar-grid"></div>
         <div class="sweep" id="sweep"></div>
-        <span class="num" id="bpm">110</span>
+        <span class="num" id="bpm">72</span>
         <small>BPM</small>
       </div>
       <dl class="tactical">
         <dt>Données tactiques</dt>
         <dd>Mode <b id="mode-tag">Classique</b></dd>
         <dd>Niveau <b id="level">1</b></dd>
-        <dd>Grille <b id="grid-size">4×6</b></dd>
+        <dd><span id="row3-label">Grille</span> <b id="grid-size">4×6</b></dd>
         <dd>Crédits <b id="run-coins">0</b></dd>
       </dl>
       <button class="icon-btn" id="btn-pause" aria-label="Pause"></button>
@@ -87,29 +99,40 @@
   </section>
 
   <!-- GAME OVER -->
-  <section class="screen" id="over" hidden>
+  <section class="screen scroll" id="over" hidden>
     <div>
       <span class="label" id="over-mode">Classique</span>
       <h2 class="over-title glitch" id="over-title" data-text="Rouge touché">Rouge touché</h2>
-      <p class="over-sub" id="over-sub">Niveau 1 atteint</p>
+      <p class="over-sub" id="over-sub"></p>
     </div>
-    <div>
-      <span class="label">Score</span>
-      <div class="over-score num" id="over-score">0</div>
-      <span class="new-best" id="over-best" hidden>Nouveau record</span>
+    <div class="over-score-row">
+      <div>
+        <span class="label">Score</span>
+        <div class="over-score num" id="over-score">0</div>
+      </div>
+      <div class="over-side">
+        <span class="new-best" id="over-best" hidden>Nouveau record</span>
+        <span class="tag" id="over-tag" hidden></span>
+      </div>
     </div>
     <div class="over-grid">
       <div class="stat" data-frame="sm"><span class="label">Crédits</span><span class="num" id="over-coins">+0</span></div>
       <div class="stat" data-frame="sm"><span class="label">Combo max</span><span class="num" id="over-combo">0</span></div>
-      <div class="stat" data-frame="sm"><span class="label">Tempo</span><span class="num" id="over-bpm">110</span></div>
+      <div class="stat" data-frame="sm"><span class="label">Tempo</span><span class="num" id="over-bpm">72</span></div>
     </div>
+    <div class="xp-row">
+      <span class="label">Rang <b id="over-rank">Recrue</b></span>
+      <span class="xpbar"><i id="over-xpbar"></i></span>
+      <span class="xp-gain" id="over-xp">+0 pts</span>
+    </div>
+    <ul class="done-list" id="over-missions" hidden></ul>
     <form class="name-row" id="name-form">
       <input id="name-input" maxlength="14" placeholder="Ton pseudo" autocomplete="nickname" aria-label="Pseudo pour le classement">
       <button class="btn" type="submit" data-frame="sm">Enregistrer</button>
     </form>
     <div class="over-actions">
       <button class="btn btn-go" id="btn-again">Rejouer</button>
-      <button class="btn" id="btn-over-shop" data-frame="sm">Boutique</button>
+      <button class="btn" id="btn-share" data-frame="sm">Partager</button>
       <button class="btn" id="btn-over-menu" data-frame="sm">Menu</button>
     </div>
   </section>
@@ -121,6 +144,7 @@
       <h2>Boutique</h2>
       <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
     </div>
+    <div class="shop-preview" id="shop-preview" aria-hidden="true"><div class="cellp"><div class="tile green"></div></div><div class="cellp"><div class="tile red"></div></div><div class="cellp"><div class="tile gold"></div></div><div class="cellp"><div class="tile green"></div></div></div>
     <div class="tabs" role="tablist" id="shop-tabs">
       <button class="tab" role="tab" data-cat="skin" aria-selected="true">Thèmes</button>
       <button class="tab" role="tab" data-cat="fx" aria-selected="false">Effets</button>
@@ -141,11 +165,135 @@
     <p class="note">Classement enregistré sur cet appareil</p>
   </section>
 
+  <!-- MISSIONS -->
+  <section class="screen" id="missions" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Missions</h2>
+      <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
+    </div>
+    <p class="intro">Trois missions par jour. Les crédits sont versés à la fin de la partie qui les termine.</p>
+    <ul class="mission-list" id="mission-list"></ul>
+    <div class="rank-card" data-frame="sm">
+      <span class="label">Rang actuel</span>
+      <b class="rank-big" id="rank-big">Recrue</b>
+      <span class="xpbar"><i id="rank-bar2"></i></span>
+      <span class="note" id="rank-next"></span>
+    </div>
+  </section>
+
+  <!-- DUEL -->
+  <section class="screen" id="duel" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Duel</h2>
+      <span class="spacer"></span>
+    </div>
+    <p class="intro">Un code donne exactement la même suite de cases. Crée un code, joue, puis envoie-le avec ton score : ton adversaire joue la même partie.</p>
+    <div class="duel-card" data-frame="sm">
+      <span class="label">Nouveau duel</span>
+      <div class="code num" id="duel-new">-----</div>
+      <button class="btn btn-go" id="btn-duel-new">Jouer ce code</button>
+      <button class="btn" id="btn-duel-reroll" data-frame="sm">Autre code</button>
+    </div>
+    <form class="duel-card" id="duel-form" data-frame="sm">
+      <label class="label" for="duel-input">Rejoindre un duel</label>
+      <input id="duel-input" class="code-input num" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button class="btn" type="submit" data-frame="sm">Jouer le code reçu</button>
+    </form>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen scroll" id="settings" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Réglages</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="set-group" data-frame="sm">
+      <label class="set-row" for="set-music"><span>Volume musique</span><input type="range" id="set-music" min="0" max="100" step="5"></label>
+      <label class="set-row" for="set-sfx"><span>Volume effets</span><input type="range" id="set-sfx" min="0" max="100" step="5"></label>
+      <div class="set-row"><span>Piste</span><span class="seg" id="set-track"></span></div>
+      <div class="set-row"><span>Vibrations</span><button class="toggle" id="set-vibe" aria-pressed="true"></button></div>
+      <div class="set-row"><span>Daltonien renforcé<small>Motifs sur les cases</small></span><button class="toggle" id="set-cb" aria-pressed="false"></button></div>
+    </div>
+    <div class="set-group" data-frame="sm">
+      <div class="set-row"><span>Décalage audio<small id="set-latency">Non calibré</small></span><button class="btn small" id="btn-calib" data-frame="sm">Calibrer</button></div>
+      <div class="set-row"><span>Tutoriel</span><button class="btn small" id="btn-tuto" data-frame="sm">Revoir</button></div>
+      <div class="set-row"><span>Confidentialité</span><button class="btn small" id="btn-privacy" data-frame="sm">Lire</button></div>
+      <div class="set-row"><span>Progression<small id="reset-hint">Crédits, records, achats</small></span><button class="btn small danger" id="btn-reset" data-frame="sm">Effacer</button></div>
+    </div>
+    <p class="note">Version <span id="app-version">2.2</span></p>
+  </section>
+
+  <!-- CALIBRATION -->
+  <section class="screen" id="calib" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Calibrage</h2>
+      <span class="spacer"></span>
+    </div>
+    <p class="intro" id="calib-text">Touche la zone sur chaque temps de la musique, 16 fois. Le jeu mesure le retard du son de ton téléphone et le compense.</p>
+    <button class="calib-pad" id="calib-pad" data-frame="hex">
+      <span class="calib-ring" id="calib-ring"></span>
+      <span class="num calib-count" id="calib-count">Commencer</span>
+    </button>
+    <p class="calib-result" id="calib-result"></p>
+    <div class="menu-actions two">
+      <button class="btn" id="btn-calib-reset" data-frame="sm">Remettre à zéro</button>
+      <button class="btn" id="btn-calib-done" data-frame="sm">Terminé</button>
+    </div>
+  </section>
+
+  <!-- TUTORIAL -->
+  <section class="screen" id="tuto" hidden>
+    <div class="topbar">
+      <span class="label" id="tuto-step">1 / 7</span>
+      <h2>Entraînement</h2>
+      <button class="btn small" id="btn-tuto-skip" data-frame="sm">Passer</button>
+    </div>
+    <p class="tuto-text" id="tuto-text"></p>
+    <div class="board tuto-board" id="tuto-board" data-frame="board"></div>
+    <p class="tuto-feedback" id="tuto-feedback"></p>
+  </section>
+
+  <!-- PRIVACY -->
+  <section class="screen scroll" id="privacy" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Confidentialité</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="prose">
+      <p><b>Ne touche pas le rouge ne collecte aucune donnée personnelle.</b></p>
+      <p>Ta progression (crédits, records, classement, réglages, pseudo) est enregistrée uniquement sur ton appareil. Elle n'est envoyée à aucun serveur et aucun tiers n'y a accès.</p>
+      <p>Le jeu ne contient ni publicité, ni outil de mesure d'audience, ni compte utilisateur, et fonctionne sans connexion internet.</p>
+      <p>Permission utilisée : <b>vibreur</b>, pour les retours haptiques. Elle se coupe dans les réglages.</p>
+      <p>Quand tu partages ton score, l'image est créée sur ton appareil et envoyée seulement à l'application que tu choisis. Sur Android 10 et plus, une copie est rangée dans Images/NeTouchePasLeRouge.</p>
+      <p>Désinstaller le jeu ou utiliser « Effacer la progression » supprime toutes ces données.</p>
+    </div>
+  </section>
+
+  <!-- SHARE MODAL -->
+  <div class="modal" id="share-modal" hidden>
+    <div class="modal-card" data-frame="sm">
+      <img id="share-img" alt="Carte de score à partager">
+      <p class="note" id="share-hint">Appuie longuement sur l'image pour l'enregistrer.</p>
+      <div class="menu-actions two">
+        <button class="btn" id="btn-share-copy" data-frame="sm">Copier le texte</button>
+        <button class="btn" id="btn-share-close" data-frame="sm">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <canvas id="fx"></canvas>
   <div class="flash" id="flash"></div>
   <div class="visor" aria-hidden="true"></div>
   <div class="toast" id="toast"></div>
 </div>
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/visuals.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>
