@@ -1,0 +1,13 @@
+{
+  "name": "Ne touche pas le rouge",
+  "short_name": "Pas le rouge",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#040a11",
+  "theme_color": "#040a11",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

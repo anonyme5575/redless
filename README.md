@@ -1,105 +1,56 @@
-# Task Dashboard
+# Ne touche pas le rouge
 
-A task management application that allows users to create, organize, and filter tasks using a modern, responsive UI built with React.
+Jeu mobile en portrait, jouable à un doigt, avec une interface de cockpit holographique (ville sous la pluie, cadres néon, jauges Énergie/Bouclier, radar). HTML/CSS/JS sans dépendance, emballé en APK Android.
 
-> **Note:** This application is intended for demonstration purposes only and is not meant for production use.
+## Règles
 
-## Features
+- Touche les cases **vertes** (rond) et **dorées** (étoile, +5 pièces).
+- Une case **rouge** (croix) touchée = partie terminée.
+- **Fintes** : certaines cases changent de couleur en cours de route.
+  - vert → rouge : touche-la vite, avant qu'elle tourne ;
+  - rouge → vert : attends qu'elle passe au vert ;
+  - clignotante : alterne vert/rouge à chaque demi-temps.
+  Une finte réussie rapporte double.
+- **La musique est l'horloge du jeu.** « Sync or Die » (100 BPM) est lue à la vitesse `tempo du jeu / 100` et les cases tombent sur ses temps. Une partie démarre lente (72 BPM, musique à x0,72), le tempo monte en continu (+15 BPM/min) et chaque palier ajoute un saut, joué en glissando (7 BPM/s), jusqu'à x2 (200 BPM, hauteur conservée). Si le morceau ne peut pas être lu, un beat synthétisé prend le relais.
+- Énergie (vert) = vies ou temps restant ; Bouclier (orange) = progression vers le multiplicateur suivant (x2 à 10 de combo, x3 à 25, x4 à 50).
 
-- **Task Management**: Create, complete, and delete tasks
-- **Task Tags**: Organize tasks with customizable tags
-- **Task Lists**: Create multiple lists with custom filters
-- **List Filters**: Filter tasks by tags or completion status
-- **Animations**: Smooth transitions and animations using Framer Motion
-- **Responsive Design**: Works on desktop and mobile devices
+## Modes
 
-## Technology Stack
+| Mode | Vies | Départ | Particularité |
+|---|---|---|---|
+| Classique | 3 | 72 BPM | +9 BPM tous les 8 verts, fintes dès le niveau 2 |
+| Chrono | – | 80 BPM | 60 s, rouge = −5 s, accélère aussi avec le temps |
+| Mort subite | 1 | 95 BPM | une erreur et c'est fini |
+| Fintes | 3 | 72 BPM | plus de la moitié des cases sont des fintes |
+| Expansion | 3 | 72 BPM | la grille grandit à chaque palier : 2×3 → 3×3 → … → 7×9 |
 
-- **React**: Modern React with functional components and hooks
-- **Tailwind CSS**: Utility-first CSS framework for styling
-- **Framer Motion**: Animation library for React
-- **Vite**: Fast, modern build tool and development server
-- **Vitest**: Testing framework compatible with Vite
+Crédits = score ÷ 5 + bonus dorés. Boutique : 6 thèmes, 5 effets, 5 formes. Record et classement (top 10 local) par mode.
 
-## Getting Started
+## APK Android
 
-### Prerequisites
+```sh
+android/build.sh          # -> dist/ne-touche-pas-le-rouge.apk
+```
 
-- Node.js (v18+)
-- npm (v10+)
+Besoin seulement d'un JDK 17+, `curl` et `unzip` : `android/fetch-tools.sh` télécharge android.jar (API 34), aapt2, d8 et uber-apk-signer dans `android/.tools`. Pas d'Android Studio ni de SDK.
+L'APK est signé avec une clé de **debug** : parfait pour l'installer soi-même, à remplacer par une vraie clé avant le Play Store.
+Le workflow `.github/workflows/apk.yml` reconstruit l'APK à chaque push.
 
-### Installation
+Installation sur le téléphone : copier l'APK, l'ouvrir, autoriser « Installer des applis inconnues » pour le gestionnaire de fichiers.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/task-dashboard.git
-   cd task-dashboard
-   ```
+## Version web
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```sh
+python3 -m http.server 8000   # puis http://localhost:8000
+```
 
-3. Start the development server:
-   ```bash
-   npm start
-   ```
+## Structure
 
-4. Open [http://localhost:3000](http://localhost:3000) to view the app
+```
+index.html, css/, js/game.js, fonts/, assets/   le jeu
+audio/sync-or-die.mp3                            la musique (128 kb/s)
+android/                                         wrapper WebView + scripts de build
+dist/ne-touche-pas-le-rouge.apk                  APK prêt à installer
+```
 
-### Available Scripts
-
-- `npm start` - Start the development server
-- `npm start:hydrated` - Start the development server with data hydration enabled
-- `npm run build` - Build for production
-- `npm run build:hydrated` - Build for production with data hydration enabled
-- `npm run build:clean` - Build for production with data hydration explicitly disabled
-- `npm run preview` - Preview the production build locally
-- `npm run preview:hydrated` - Preview the production build with data hydration enabled
-- `npm test` - Run tests with Vitest
-
-### Data Hydration
-
-The application supports pre-populating the app with sample data through an optional hydration process:
-
-- Sample data is defined in `src/data/initialData.json`
-- Hydration can be enabled/disabled using the `VITE_ENABLE_DATA_HYDRATION` environment variable
-- Use the convenience scripts for development with hydration:
-  - `npm run start:hydrated` - Development with sample data
-  - `npm run build:hydrated` - Production build with sample data
-  - `npm run build:clean` - Production build without sample data
-- GitHub Actions deployment automatically enables hydration for the production build
-
-## Architecture
-
-### State Management
-
-The application uses React Context for state management:
-
-- **TaskContext**: Manages tasks state and operations (add, toggle, delete)
-- **TagContext**: Manages tags and their relationships with tasks
-- **ListContext**: Manages task lists and filtering logic
-
-### UI Components
-
-The application features several key components:
-- **TaskList**: Renders a list of tasks
-- **TaskItem**: Renders an individual task
-- **TaskBoard**: Manages multiple task lists
-- **TagManager**: Interface for creating and managing tags
-- **GlobalTaskForm**: Form for creating new tasks
-- **ListAddTask**: Form for adding tasks to specific lists
-- **TaskListConfig**: Interface for configuring task lists
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Réglages : objet `MODES` en tête de `js/game.js`, puis `lifetimeMs()`, `redChance()`, `feintChance()`, `spawnsThisBeat()`.

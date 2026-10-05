@@ -1,35 +1,151 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using @vitejs/plugin-react"
-    />
-    <link rel="apple-touch-icon" href="/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="/manifest.json" />
-    <title>Task Dashboard</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#040a11">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<!-- artifact:start -->
+<title>Ne touche pas le rouge</title>
+<link rel="stylesheet" href="css/style.css">
+<!-- artifact:head-end -->
+</head>
+<body>
+<div id="app" data-skin="minuit" data-shape="carre">
+  <canvas id="rain"></canvas>
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+  <!-- MENU -->
+  <section class="screen" id="menu">
+    <div class="menu-top">
+      <span class="sys">Système <b>en ligne</b></span>
+      <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
+      <button class="icon-btn" id="btn-sound" aria-label="Couper le son"></button>
+    </div>
+    <div class="menu-hero" data-frame="hex">
+      <div class="demo" id="demo" aria-hidden="true"></div>
+    </div>
+    <h1 class="title"><span class="glitch" data-text="Ne touche pas le">Ne touche pas le</span> <span class="t-red glitch" data-text="rouge">rouge</span></h1>
+    <div class="modes" id="modes" role="radiogroup" aria-label="Mode de jeu"></div>
+    <div class="menu-actions">
+      <button class="btn btn-go" id="btn-play">Jouer</button>
+      <button class="btn" id="btn-shop" data-frame="sm">Boutique</button>
+      <button class="btn" id="btn-board" data-frame="sm">Classement</button>
+    </div>
+  </section>
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
-  </body>
-  <script type="module" src="/src/index.jsx"></script>
+  <!-- PLAY -->
+  <section class="screen" id="play" hidden>
+    <div class="hud">
+      <div class="gauge gauge-energy">
+        <span class="g-label" id="energy-label">Énergie</span>
+        <svg viewBox="0 0 36 92" aria-hidden="true"><path class="arc-track" d="M30 4 Q2 46 30 88" pathLength="100"/><path class="arc-fill" id="energy-fill" d="M30 88 Q2 46 30 4" pathLength="100"/></svg>
+        <span class="g-value num" id="energy-val">3</span>
+      </div>
+      <div class="score-frame" data-frame="hex">
+        <span class="label">Score</span>
+        <div class="hud-score num" id="score" aria-live="polite">0</div>
+        <span class="combo" id="combo"></span>
+      </div>
+      <div class="gauge gauge-shield">
+        <span class="g-label">Bouclier</span>
+        <svg viewBox="0 0 36 92" aria-hidden="true"><path class="arc-track" d="M6 4 Q34 46 6 88" pathLength="100"/><path class="arc-fill" id="shield-fill" d="M6 88 Q34 46 6 4" pathLength="100"/></svg>
+        <span class="g-value num" id="mult">x1</span>
+      </div>
+    </div>
+    <div class="board-wrap">
+      <div class="board" id="board" data-frame="board"></div>
+    </div>
+    <div class="beatbar"><i id="beat"></i></div>
+    <div class="bottom-hud">
+      <div class="radar" data-frame="sm">
+        <div class="radar-grid"></div>
+        <div class="sweep" id="sweep"></div>
+        <span class="num" id="bpm">110</span>
+        <small>BPM</small>
+      </div>
+      <dl class="tactical">
+        <dt>Données tactiques</dt>
+        <dd>Mode <b id="mode-tag">Classique</b></dd>
+        <dd>Niveau <b id="level">1</b></dd>
+        <dd>Grille <b id="grid-size">4×6</b></dd>
+        <dd>Crédits <b id="run-coins">0</b></dd>
+      </dl>
+      <button class="icon-btn" id="btn-pause" aria-label="Pause"></button>
+    </div>
+    <div class="banner" id="banner"></div>
+    <div class="countdown" id="countdown" hidden></div>
+    <div class="pause-overlay" id="paused" hidden>
+      <div class="pause-card" data-frame="hex">
+        <h3>Pause</h3>
+        <button class="btn btn-go" id="btn-resume">Reprendre</button>
+        <button class="btn" id="btn-quit" data-frame="sm">Quitter la partie</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME OVER -->
+  <section class="screen" id="over" hidden>
+    <div>
+      <span class="label" id="over-mode">Classique</span>
+      <h2 class="over-title glitch" id="over-title" data-text="Rouge touché">Rouge touché</h2>
+      <p class="over-sub" id="over-sub">Niveau 1 atteint</p>
+    </div>
+    <div>
+      <span class="label">Score</span>
+      <div class="over-score num" id="over-score">0</div>
+      <span class="new-best" id="over-best" hidden>Nouveau record</span>
+    </div>
+    <div class="over-grid">
+      <div class="stat" data-frame="sm"><span class="label">Crédits</span><span class="num" id="over-coins">+0</span></div>
+      <div class="stat" data-frame="sm"><span class="label">Combo max</span><span class="num" id="over-combo">0</span></div>
+      <div class="stat" data-frame="sm"><span class="label">Tempo</span><span class="num" id="over-bpm">110</span></div>
+    </div>
+    <form class="name-row" id="name-form">
+      <input id="name-input" maxlength="14" placeholder="Ton pseudo" autocomplete="nickname" aria-label="Pseudo pour le classement">
+      <button class="btn" type="submit" data-frame="sm">Enregistrer</button>
+    </form>
+    <div class="over-actions">
+      <button class="btn btn-go" id="btn-again">Rejouer</button>
+      <button class="btn" id="btn-over-shop" data-frame="sm">Boutique</button>
+      <button class="btn" id="btn-over-menu" data-frame="sm">Menu</button>
+    </div>
+  </section>
+
+  <!-- SHOP -->
+  <section class="screen" id="shop" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Boutique</h2>
+      <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
+    </div>
+    <div class="tabs" role="tablist" id="shop-tabs">
+      <button class="tab" role="tab" data-cat="skin" aria-selected="true">Thèmes</button>
+      <button class="tab" role="tab" data-cat="fx" aria-selected="false">Effets</button>
+      <button class="tab" role="tab" data-cat="shape" aria-selected="false">Formes</button>
+    </div>
+    <div class="shop-list" id="shop-list"></div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="screen" id="ranking" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Classement</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="tabs" role="tablist" id="rank-tabs"></div>
+    <ol class="board-list" id="board-list"></ol>
+    <p class="note">Classement enregistré sur cet appareil</p>
+  </section>
+
+  <canvas id="fx"></canvas>
+  <div class="flash" id="flash"></div>
+  <div class="visor" aria-hidden="true"></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script src="js/game.js"></script>
+</body>
 </html>
