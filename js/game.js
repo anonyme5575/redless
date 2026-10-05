@@ -3,9 +3,32 @@
 
   // ---------- config ----------
   const COLS = 4, ROWS = 6;
-  const START_BPM = 96, MAX_BPM = 184, BPM_STEP = 8;
-  const GREENS_PER_LEVEL = 12;
-  const LIVES = 3;
+  const MAX_BPM = 230;
+
+  // Each mode tunes the same engine. Levels raise the tempo; tempo drives spawns and tile lifetime.
+  const MODES = {
+    classic: {
+      name: "Classique", rule: "3 vies, ça accélère vite",
+      lives: 3, startBpm: 110, bpmStep: 10, greensPerLevel: 8,
+      feint: { from: 2, base: 0.06, step: 0.04, max: 0.32 },
+    },
+    chrono: {
+      name: "Chrono", rule: "60 s, rouge = −5 s",
+      lives: 0, time: 60, redPenalty: 5, startBpm: 120, bpmStep: 12, greensPerLevel: 7,
+      feint: { from: 1, base: 0.12, step: 0.03, max: 0.3 },
+    },
+    sudden: {
+      name: "Mort subite", rule: "1 seule vie, départ rapide",
+      lives: 1, startBpm: 150, bpmStep: 10, greensPerLevel: 8,
+      feint: { from: 1, base: 0.15, step: 0.04, max: 0.35 },
+    },
+    feint: {
+      name: "Fintes", rule: "Les cases changent de couleur",
+      lives: 3, startBpm: 104, bpmStep: 8, greensPerLevel: 8,
+      feint: { from: 1, base: 0.55, step: 0.04, max: 0.8 },
+    },
+  };
+  const MODE_IDS = Object.keys(MODES);
 
   const CATALOG = {
     skin: [
@@ -14,7 +37,7 @@
       { id: "neon",   name: "Néon",   price: 400,  colors: ["#0b0616", "#39ff9f", "#ff2e88"] },
       { id: "ocean",  name: "Océan",  price: 600,  colors: ["#06171f", "#4ef0c4", "#ff5d73"] },
       { id: "lave",   name: "Lave",   price: 800,  colors: ["#190c09", "#b8f25c", "#ff4d1a"] },
-      { id: "shadow", name: "Shadow 1", price: 1200, colors: ["#1d1e21", "#4be38a", "#f2424f"] },
+      { id: "shadow", name: "Graphite", price: 1200, colors: ["#1d1e21", "#4be38a", "#f2424f"] },
     ],
     fx: [
       { id: "eclats",   name: "Éclats",   price: 0 },
@@ -35,7 +58,7 @@
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
   const defaults = {
-    coins: 0, best: 0, games: 0, name: "",
+    coins: 0, bests: {}, games: 0, name: "", mode: "classic",
     owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"] },
     equipped: { skin: "minuit", fx: "eclats", shape: "carre" },
     scores: [], sound: true,
@@ -43,11 +66,16 @@
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
-      if (!raw) return structuredClone(defaults);
+      if (!raw) return JSON.parse(JSON.stringify(defaults));
       const s = JSON.parse(raw);
-      return { ...structuredClone(defaults), ...s,
+      const out = { ...JSON.parse(JSON.stringify(defaults)), ...s,
         owned: { ...defaults.owned, ...s.owned }, equipped: { ...defaults.equipped, ...s.equipped } };
-    } catch { return structuredClone(defaults); }
+      // v1 saves had one global best and mode-less scores: they were all Classique.
+      if (typeof s.best === "number" && !out.bests.classic) out.bests.classic = s.best;
+      out.scores.forEach((e) => (e.mode = e.mode || "classic"));
+      if (!MODES[out.mode]) out.mode = "classic";
+      return out;
+    } catch { return JSON.parse(JSON.stringify(defaults)); }
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
   const S = load();
@@ -77,7 +105,6 @@
   }
   function bindAll() {
     document.querySelectorAll('[data-bind="coins"]').forEach((e) => (e.textContent = S.coins));
-    document.querySelectorAll('[data-bind="best"]').forEach((e) => (e.textContent = S.best));
     document.querySelectorAll('[data-bind="games"]').forEach((e) => (e.textContent = S.games));
   }
   function applyLook() {
@@ -238,13 +265,19 @@
   let G = null;
 
   function newGame() {
+    const M = MODES[S.mode];
     G = {
+      mode: S.mode, M,
       running: false, paused: false, over: false,
-      score: 0, combo: 0, maxCombo: 0, lives: LIVES, coins: 0, greens: 0,
-      level: 1, bpm: START_BPM, beatN: 0, nextBeat: 0, lastBeat: 0, clock: 0,
+      score: 0, combo: 0, maxCombo: 0, lives: M.lives, coins: 0, greens: 0,
+      level: 1, bpm: M.startBpm, beatN: 0, nextBeat: 0, lastBeat: 0, clock: 0,
+      timeLeft: M.time ? M.time * 1000 : 0,
       tiles: new Map(), // cellIndex -> tile
     };
     cells.forEach((c) => (c.innerHTML = ""));
+    heartsEl.hidden = !M.lives;
+    $("#chrono").hidden = !M.time;
+    $("#mode-tag").textContent = M.name;
     renderHud();
   }
   const spb = () => 60 / G.bpm; // seconds per beat
@@ -252,7 +285,7 @@
   function renderHud() {
     scoreEl.textContent = G.score;
     heartsEl.innerHTML = "";
-    for (let i = 0; i < LIVES; i++) {
+    for (let i = 0; i < G.M.lives; i++) {
       const h = document.createElement("span");
       h.className = "heart" + (i >= G.lives ? " lost" : ""); heartsEl.appendChild(h);
     }
@@ -261,16 +294,45 @@
     bpmEl.textContent = `${G.bpm} BPM`;
     levelEl.textContent = `Niveau ${G.level}`;
     runCoinsEl.textContent = G.coins;
+    renderChrono();
+  }
+  function renderChrono() {
+    if (!G.M.time) return;
+    const c = $("#chrono"), s = Math.max(0, G.timeLeft / 1000);
+    c.textContent = s < 10 ? s.toFixed(1) : Math.ceil(s);
+    c.classList.toggle("low", s < 10);
   }
   const multiplier = () => (G.combo >= 50 ? 4 : G.combo >= 25 ? 3 : G.combo >= 10 ? 2 : 1);
 
-  // Difficulty curve, all derived from the level.
-  function lifetimeMs() { return Math.max(520, 1700 - (G.level - 1) * 110); }
-  function redChance() { return Math.min(0.42, 0.22 + (G.level - 1) * 0.025); }
+  // Difficulty curve. Lifetime is measured in beats, so it shrinks with the tempo,
+  // and also loses beats as levels climb.
+  function lifetimeMs() {
+    const beats = Math.max(1.6, 3.4 - (G.level - 1) * 0.18);
+    return Math.max(380, beats * spb() * 1000);
+  }
+  function redChance() { return Math.min(0.4, 0.24 + (G.level - 1) * 0.02); }
+  function feintChance() {
+    const f = G.M.feint;
+    if (G.level < f.from) return 0;
+    return Math.min(f.max, f.base + (G.level - f.from) * f.step);
+  }
   function spawnsThisBeat() {
-    if (G.level >= 7) return Math.random() < 0.5 ? 2 : 1;
-    if (G.level >= 4) return Math.random() < 0.25 ? 2 : 1;
-    return 1;
+    const extra = Math.min(0.8, Math.max(0, (G.level - 2) * 0.12));
+    return 1 + (Math.random() < extra ? 1 : 0) + (G.level >= 9 && Math.random() < 0.3 ? 1 : 0);
+  }
+
+  // Tile kinds:
+  //  green / gold / red  — fixed colour
+  //  turn   — starts green, turns red partway (tap it early)
+  //  trap   — starts red, turns green partway (wait, then tap)
+  //  blink  — flips green/red every half beat (tap on green)
+  function pickKind() {
+    if (Math.random() < feintChance()) {
+      const r = Math.random();
+      return r < 0.4 ? "turn" : r < 0.75 ? "trap" : "blink";
+    }
+    const r = Math.random();
+    return r < redChance() ? "red" : r < redChance() + 0.05 ? "gold" : "green";
   }
 
   function spawn() {
@@ -278,14 +340,30 @@
     for (let i = 0; i < cells.length; i++) if (!G.tiles.has(i)) free.push(i);
     if (!free.length) return;
     const i = free[(Math.random() * free.length) | 0];
-    const r = Math.random();
-    const kind = r < redChance() ? "red" : r < redChance() + 0.05 ? "gold" : "green";
+    const kind = pickKind();
     const el = document.createElement("div");
-    el.className = "tile " + kind;
     const timer = document.createElement("span"); timer.className = "timer"; el.appendChild(timer);
     cells[i].appendChild(el);
-    const life = kind === "red" ? lifetimeMs() * 1.3 : lifetimeMs();
-    G.tiles.set(i, { kind, el, timer, born: G.clock, life });
+    let life = lifetimeMs();
+    const t = { kind, el, timer, born: G.clock, life, color: "green", switchAt: 0 };
+    if (kind === "red") { t.color = "red"; t.life = life * 1.3; }
+    else if (kind === "gold") t.color = "gold";
+    else if (kind === "turn") t.switchAt = life * (0.3 + Math.random() * 0.25);
+    else if (kind === "trap") { t.color = "red"; t.switchAt = life * (0.25 + Math.random() * 0.2); t.life = life * 1.35; }
+    else if (kind === "blink") { t.flip = spb() * 500; t.color = t.startColor = Math.random() < 0.5 ? "green" : "red"; t.life = life * 1.5; }
+    paint(t);
+    G.tiles.set(i, t);
+  }
+  function paint(t) { t.el.className = "tile " + t.color; }
+
+  // Advance colour changes of feint tiles. Returns the tile's colour now.
+  function updateFeint(t, age) {
+    let c = t.color;
+    if (t.kind === "turn" && age >= t.switchAt) c = "red";
+    else if (t.kind === "trap" && age >= t.switchAt) c = "green";
+    else if (t.kind === "blink") c = Math.floor(age / t.flip) % 2 === 0 ? t.startColor : (t.startColor === "green" ? "red" : "green");
+    if (c !== t.color) { t.color = c; paint(t); }
+    return c;
   }
 
   function removeTile(i, cls) {
@@ -306,57 +384,80 @@
     const i = +cell.dataset.i, t = G.tiles.get(i);
     if (!t) return; // empty cell: no penalty
     const [x, y] = cellCenter(i);
-    if (t.kind === "red") return lose(i, x, y);
+    const color = updateFeint(t, G.clock - t.born);
+    if (color === "red") return touchRed(i, x, y);
+    const feint = t.kind === "turn" || t.kind === "trap" || t.kind === "blink";
     G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.greens++;
-    G.score += multiplier();
+    G.score += multiplier() * (feint ? 2 : 1);
     if (t.kind === "gold") { G.coins += 5; G.score += 2 * multiplier(); }
-    Audio.hit(G.combo, t.kind === "gold");
-    burst(x, y, t.kind === "gold" ? cssVar("--gold") : cssVar("--green"), S.equipped.fx, t.kind === "gold");
+    Audio.hit(G.combo, t.kind === "gold" || feint);
+    burst(x, y, color === "gold" ? cssVar("--gold") : cssVar("--green"), S.equipped.fx, t.kind === "gold" || feint);
     removeTile(i, "hit");
-    if (G.greens % GREENS_PER_LEVEL === 0) levelUp();
+    if (G.greens % G.M.greensPerLevel === 0) levelUp();
     renderHud();
   }
   boardEl.addEventListener("pointerdown", onTap);
 
   function levelUp() {
     G.level++;
-    G.bpm = Math.min(MAX_BPM, G.bpm + BPM_STEP);
+    G.bpm = Math.min(MAX_BPM, G.bpm + G.M.bpmStep);
     const l = $("#levelup");
     l.textContent = G.bpm >= MAX_BPM ? "Tempo max" : `${G.bpm} BPM`;
+    if (G.level === G.M.feint.from && G.M.feint.from > 1) l.textContent = "Fintes !";
     l.classList.remove("on"); void l.offsetWidth; l.classList.add("on");
   }
 
   function missGreen(i) {
-    G.lives--; G.combo = 0;
+    G.combo = 0;
     Audio.miss();
     try { navigator.vibrate && navigator.vibrate(40); } catch {}
     removeTile(i, "miss");
-    renderHud();
-    if (G.lives <= 0) end("Trop lent", "Trois cases vertes ratées");
+    if (G.M.lives) {
+      G.lives--;
+      renderHud();
+      if (G.lives <= 0) end("Trop lent", G.M.lives === 1 ? "Une case verte ratée" : `${G.M.lives} cases vertes ratées`);
+    } else renderHud();
   }
 
-  function lose(i, x, y) {
+  function touchRed(i, x, y) {
     burst(x, y, cssVar("--red"), "eclats", true);
+    if (G.M.redPenalty) {
+      G.timeLeft -= G.M.redPenalty * 1000; G.combo = 0;
+      Audio.miss();
+      try { navigator.vibrate && navigator.vibrate(60); } catch {}
+      flash(); removeTile(i, "miss");
+      const l = $("#levelup"); l.textContent = `−${G.M.redPenalty} s`;
+      l.classList.remove("on"); void l.offsetWidth; l.classList.add("on");
+      renderHud();
+      if (G.timeLeft <= 0) end("Temps écoulé", null);
+      return;
+    }
     const t = G.tiles.get(i); if (t) t.el.classList.add("hit");
     end("Rouge touché", null);
   }
+  function flash() { const f = $("#flash"); f.classList.remove("on"); void f.offsetWidth; f.classList.add("on"); }
 
   function end(title, sub) {
     G.running = false; G.over = true;
-    Audio.fail();
-    try { navigator.vibrate && navigator.vibrate([80, 40, 120]); } catch {}
-    const f = $("#flash"); f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
-    screens.play.classList.remove("shake"); void screens.play.offsetWidth; screens.play.classList.add("shake");
-    setTimeout(() => showOver(title, sub), 650);
+    const fail = title !== "Temps écoulé";
+    if (fail) {
+      Audio.fail();
+      try { navigator.vibrate && navigator.vibrate([80, 40, 120]); } catch {}
+      flash();
+      screens.play.classList.remove("shake"); void screens.play.offsetWidth; screens.play.classList.add("shake");
+    } else Audio.ui();
+    setTimeout(() => showOver(title, sub), fail ? 650 : 300);
   }
 
   function showOver(title, sub) {
     const earned = Math.floor(G.score / 5) + G.coins;
-    const isBest = G.score > S.best;
+    const prev = S.bests[G.mode] || 0, isBest = G.score > prev;
     S.coins += earned; S.games++;
-    if (isBest) S.best = G.score;
+    if (isBest) S.bests[G.mode] = G.score;
     save();
+    $("#over-mode").textContent = G.M.name;
     $("#over-title").textContent = title;
+    $("#over-title").style.color = title === "Temps écoulé" ? "var(--gold)" : "";
     $("#over-sub").textContent = sub || `Niveau ${G.level} atteint`;
     $("#over-score").textContent = G.score;
     $("#over-coins").textContent = "+" + earned;
@@ -376,16 +477,19 @@
 
   function recordScore(name) {
     const form = $("#name-form");
-    const entry = { name, score: G.score, level: G.level, date: Date.now() };
     if (form.dataset.saved) {
       const prev = S.scores.find((s) => s.date === +form.dataset.saved);
       if (prev) prev.name = name;
     } else {
+      const entry = { name, score: G.score, level: G.level, mode: G.mode, date: Date.now() };
       S.scores.push(entry);
       form.dataset.saved = entry.date;
     }
     S.scores.sort((a, b) => b.score - a.score);
-    S.scores = S.scores.slice(0, 20);
+    // Keep the top 15 of each mode.
+    const kept = [], count = {};
+    for (const s of S.scores) if ((count[s.mode] = (count[s.mode] || 0) + 1) <= 15) kept.push(s);
+    S.scores = kept;
     S.name = name; save();
   }
   $("#name-form").addEventListener("submit", (e) => {
@@ -401,25 +505,39 @@
   let lastFrame = performance.now();
   function frame(now) {
     const dt = Math.min(50, now - lastFrame); lastFrame = now;
-    if (G && G.running && !G.paused) {
-      G.clock += dt;
-      if (G.clock >= G.nextBeat) {
-        Audio.beat(G.beatN, spb(), G.level);
-        const n = spawnsThisBeat();
-        for (let k = 0; k < n; k++) spawn();
-        G.lastBeat = G.nextBeat;
-        G.nextBeat += spb() * 1000;
-        G.beatN++;
-      }
-      beatEl.style.transform = `scaleX(${1 - (G.clock - G.lastBeat) / (spb() * 1000)})`;
-      for (const [i, t] of G.tiles) {
-        const p = (G.clock - t.born) / t.life;
-        if (p >= 1) { if (t.kind === "red") removeTile(i, "miss"); else { missGreen(i); if (!G.running) break; } }
-        else t.timer.style.transform = `scaleX(${1 - p})`;
-      }
-    }
+    if (G && G.running && !G.paused) tick(dt);
     if (parts.length || canvas.dataset.dirty) { drawFx(dt); canvas.dataset.dirty = parts.length ? "1" : ""; }
+    if (!screens.menu.hidden) demoTick(now);
     requestAnimationFrame(frame);
+  }
+  function tick(dt) {
+    G.clock += dt;
+    if (G.M.time) {
+      G.timeLeft -= dt;
+      // Chrono speeds up with time as well as with greens.
+      const lvl = 1 + Math.floor((G.M.time * 1000 - G.timeLeft) / 8000);
+      while (G.level < lvl) levelUp();
+      renderChrono();
+      if (G.timeLeft <= 0) { G.timeLeft = 0; renderChrono(); return end("Temps écoulé", null); }
+    }
+    if (G.clock >= G.nextBeat) {
+      Audio.beat(G.beatN, spb(), G.level);
+      const n = spawnsThisBeat();
+      for (let k = 0; k < n; k++) spawn();
+      G.lastBeat = G.nextBeat;
+      G.nextBeat += spb() * 1000;
+      G.beatN++;
+    }
+    beatEl.style.transform = `scaleX(${1 - (G.clock - G.lastBeat) / (spb() * 1000)})`;
+    for (const [i, t] of G.tiles) {
+      const age = G.clock - t.born, p = age / t.life;
+      const color = updateFeint(t, age);
+      if (p >= 1) {
+        // Only a tile that ends green counts as missed.
+        if (color === "red") removeTile(i, "miss");
+        else { missGreen(i); if (!G.running) break; }
+      } else t.timer.style.transform = `scaleX(${1 - p})`;
+    }
   }
   requestAnimationFrame(frame);
 
@@ -430,14 +548,16 @@
     sizeCanvas();
     countdown(() => { G.running = true; G.nextBeat = G.clock; });
   }
+  let countdownTimer = 0;
   function countdown(done) {
     const c = $("#countdown"); let n = 3;
+    clearInterval(countdownTimer);
     c.hidden = false; c.textContent = n; Audio.ui();
-    const iv = setInterval(() => {
+    countdownTimer = setInterval(() => {
       n--;
-      if (n === 0) { clearInterval(iv); c.hidden = true; done(); return; }
+      if (n === 0) { clearInterval(countdownTimer); c.hidden = true; done(); return; }
       c.textContent = n; Audio.ui();
-    }, 500);
+    }, 450);
   }
   function pause() {
     if (!G || !G.running || G.paused) return;
@@ -449,31 +569,68 @@
     if (Audio.ctx) Audio.ctx.resume();
     countdown(() => { G.paused = false; });
   }
-  $("#btn-pause").onclick = pause;
-  $("#btn-resume").onclick = resume;
-  $("#btn-quit").onclick = () => {
+  function quit() {
     $("#paused").hidden = true; G.running = false;
     if (Audio.ctx) Audio.ctx.resume();
     for (const i of [...G.tiles.keys()]) removeTile(i);
     show("menu");
-  };
+  }
+  $("#btn-pause").onclick = pause;
+  $("#btn-resume").onclick = resume;
+  $("#btn-quit").onclick = quit;
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+  // Hooks for the Android wrapper: system Back and app going to background.
+  window.__pause = pause;
+  window.__back = () => {
+    if (!screens.play.hidden) {
+      if (G && G.running && !G.paused) { pause(); return true; }
+      if (G && G.paused) { quit(); return true; }
+      return true;
+    }
+    if (!screens.menu.hidden) return false;
+    show("menu"); return true;
+  };
 
   $("#btn-play").onclick = startGame;
   $("#btn-again").onclick = startGame;
   $("#btn-shop").onclick = () => show("shop");
   $("#btn-over-shop").onclick = () => show("shop");
-  $("#btn-board").onclick = () => show("ranking");
+  $("#btn-board").onclick = () => { rankMode = S.mode; show("ranking"); };
   $("#btn-over-menu").onclick = () => show("menu");
 
   // ---------- menu ----------
-  function renderMenu() { bindAll(); renderSoundBtn(); }
+  function renderMenu() { bindAll(); renderSoundBtn(); renderModes(); }
+  function renderModes() {
+    const box = $("#modes"); box.innerHTML = "";
+    for (const id of MODE_IDS) {
+      const m = MODES[id], b = document.createElement("button");
+      b.className = "mode"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", id === S.mode);
+      b.innerHTML = `<b></b><span></span><em></em>`;
+      b.querySelector("b").textContent = m.name;
+      b.querySelector("span").textContent = m.rule;
+      b.querySelector("em").textContent = `Record ${S.bests[id] || 0}`;
+      b.onclick = () => { S.mode = id; save(); Audio.init(); Audio.ui(); renderModes(); };
+      box.appendChild(b);
+    }
+  }
+  // Menu backdrop: a 4×3 board that plays itself, feints included.
+  const demo = $("#demo"), demoCells = [];
+  for (let i = 0; i < 12; i++) { const c = document.createElement("i"); demo.appendChild(c); demoCells.push(c); }
+  let demoNext = 0;
+  function demoTick(now) {
+    if (now < demoNext) return;
+    demoNext = now + 260;
+    const c = demoCells[(Math.random() * demoCells.length) | 0];
+    const r = Math.random();
+    c.className = r < 0.55 ? "g" : r < 0.85 ? "r" : "";
+    if (c.className === "g" && Math.random() < 0.3) setTimeout(() => { c.className = "r"; }, 420);
+  }
 
   // ---------- shop ----------
   let shopCat = "skin";
-  document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => {
+  document.querySelectorAll("#shop-tabs .tab").forEach((t) => (t.onclick = () => {
     shopCat = t.dataset.cat;
-    document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x === t));
+    document.querySelectorAll("#shop-tabs .tab").forEach((x) => x.setAttribute("aria-selected", x === t));
     renderShop();
   }));
   function preview(cat, item) {
@@ -512,7 +669,7 @@
       else if (owned) st.textContent = "Équiper";
       else st.innerHTML = `<span class="coin"></span>${item.price}`;
       b.appendChild(st);
-      b.onclick = (e) => {
+      b.onclick = () => {
         Audio.init();
         if (!owned) {
           if (S.coins < item.price) return toast(`Il te manque ${item.price - S.coins} pièces`);
@@ -531,14 +688,24 @@
   }
 
   // ---------- leaderboard ----------
+  let rankMode = S.mode;
   function renderBoard() {
+    const tabs = $("#rank-tabs"); tabs.innerHTML = "";
+    for (const id of MODE_IDS) {
+      const t = document.createElement("button");
+      t.className = "tab"; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", id === rankMode);
+      t.textContent = MODES[id].name;
+      t.onclick = () => { rankMode = id; renderBoard(); };
+      tabs.appendChild(t);
+    }
     const ol = $("#board-list"); ol.innerHTML = "";
-    if (!S.scores.length) {
+    const rows = S.scores.filter((s) => s.mode === rankMode).slice(0, 10);
+    if (!rows.length) {
       const li = document.createElement("li"); li.className = "empty";
-      li.textContent = "Aucun score pour l'instant. Termine une partie et enregistre ton pseudo pour entrer au classement.";
+      li.textContent = `Aucun score en ${MODES[rankMode].name} pour l'instant. Termine une partie et enregistre ton pseudo pour entrer au classement.`;
       ol.appendChild(li); return;
     }
-    S.scores.slice(0, 10).forEach((s, k) => {
+    rows.forEach((s, k) => {
       const li = document.createElement("li");
       if (s.name === S.name) li.className = "me";
       const d = new Date(s.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });

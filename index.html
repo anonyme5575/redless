@@ -10,9 +10,6 @@
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <!-- artifact:start -->
 <title>Ne touche pas le rouge</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Semi+Condensed:wght@500;600;700;800&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <!-- artifact:head-end -->
 </head>
@@ -22,22 +19,14 @@
   <!-- MENU -->
   <section class="screen" id="menu">
     <div class="menu-top">
-      <div class="profile">
-        <div class="avatar" role="img" aria-label="Ton joueur"></div>
-        <span class="coins"><span class="coin"></span><span class="num" data-bind="coins">0</span></span>
-      </div>
+      <span class="coins"><span class="coin"></span><span class="num" data-bind="coins">0</span></span>
       <button class="icon-btn" id="btn-sound" aria-label="Couper le son"></button>
     </div>
     <div class="menu-hero">
-      <div class="menu-player" role="img" aria-label="Le joueur en hoodie noir et baskets"></div>
-      <h1 class="title">Ne touche<br>pas le<span class="t-red">rouge</span>
-        <small>Touche les cases vertes. Une seule case rouge et c'est fini.</small>
-      </h1>
+      <div class="demo" id="demo" aria-hidden="true"></div>
+      <h1 class="title">Ne touche<br>pas le <span class="t-red">rouge</span></h1>
     </div>
-    <div class="menu-stats">
-      <div><span class="label">Record</span><span class="num" data-bind="best">0</span></div>
-      <div><span class="label">Parties</span><span class="num" data-bind="games">0</span></div>
-    </div>
+    <div class="modes" id="modes" role="radiogroup" aria-label="Mode de jeu"></div>
     <div class="menu-actions">
       <button class="btn btn-go" id="btn-play">Jouer</button>
       <button class="btn" id="btn-shop">Boutique</button>
@@ -50,11 +39,12 @@
     <div class="hud">
       <div class="hud-left">
         <div class="hearts" id="hearts" aria-label="Vies"></div>
+        <span class="chrono num" id="chrono" hidden>60</span>
         <span class="combo" id="combo"></span>
       </div>
       <div class="hud-score num" id="score" aria-live="polite">0</div>
       <div class="hud-right">
-        <span class="chip" id="bpm">96 BPM</span>
+        <span class="chip" id="bpm">110 BPM</span>
         <span class="coins"><span class="coin"></span><span class="num" id="run-coins">0</span></span>
       </div>
     </div>
@@ -65,6 +55,7 @@
     <div class="beatbar"><i id="beat"></i></div>
     <div class="topbar">
       <span class="label" id="level">Niveau 1</span>
+      <span class="label mode-tag" id="mode-tag">Classique</span>
       <button class="icon-btn" id="btn-pause" aria-label="Pause"></button>
     </div>
     <div class="countdown" id="countdown" hidden></div>
@@ -79,12 +70,10 @@
 
   <!-- GAME OVER -->
   <section class="screen" id="over" hidden>
-    <div class="over-head">
-      <div class="avatar" role="img" aria-label="Ton joueur"></div>
-      <div>
-        <h2 id="over-title">Rouge touché</h2>
-        <p id="over-sub">Niveau 1 atteint</p>
-      </div>
+    <div>
+      <span class="label" id="over-mode">Classique</span>
+      <h2 class="over-title" id="over-title">Rouge touché</h2>
+      <p class="over-sub" id="over-sub">Niveau 1 atteint</p>
     </div>
     <div>
       <span class="label">Score</span>
@@ -94,7 +83,7 @@
     <div class="over-grid">
       <div class="stat"><span class="label">Pièces</span><span class="num" id="over-coins">+0</span></div>
       <div class="stat"><span class="label">Combo max</span><span class="num" id="over-combo">0</span></div>
-      <div class="stat"><span class="label">Tempo</span><span class="num" id="over-bpm">96</span></div>
+      <div class="stat"><span class="label">Tempo</span><span class="num" id="over-bpm">110</span></div>
     </div>
     <form class="name-row" id="name-form">
       <input id="name-input" maxlength="14" placeholder="Ton pseudo" autocomplete="nickname" aria-label="Pseudo pour le classement">
@@ -114,7 +103,7 @@
       <h2>Boutique</h2>
       <span class="coins"><span class="coin"></span><span class="num" data-bind="coins">0</span></span>
     </div>
-    <div class="tabs" role="tablist">
+    <div class="tabs" role="tablist" id="shop-tabs">
       <button class="tab" role="tab" data-cat="skin" aria-selected="true">Thèmes</button>
       <button class="tab" role="tab" data-cat="fx" aria-selected="false">Effets</button>
       <button class="tab" role="tab" data-cat="shape" aria-selected="false">Formes</button>
@@ -127,8 +116,9 @@
     <div class="topbar">
       <button class="icon-btn back" aria-label="Retour"></button>
       <h2>Classement</h2>
-      <span style="width:44px"></span>
+      <span class="spacer"></span>
     </div>
+    <div class="tabs tabs-4" role="tablist" id="rank-tabs"></div>
     <ol class="board-list" id="board-list"></ol>
     <p class="note">Classement enregistré sur cet appareil.</p>
   </section>
