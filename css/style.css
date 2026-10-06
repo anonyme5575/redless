@@ -657,8 +657,6 @@ html, body { touch-action: manipulation; }
 .update-bar b { color: var(--green); }
 
 /* ---------- interface polish ---------- */
-/* button icons (home) */
-.bi { width: 15px; height: 15px; margin-right: 7px; vertical-align: -2px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 /* press feedback on every tappable card */
 .mode, .mode-pick, .item, .daily, .board-list li.open, .rank-badge { transition: transform .12s ease, filter .12s ease; }
 .mode:active, .mode-pick:active, .item:active, .daily:active, .rank-badge:active { transform: scale(.97); filter: brightness(1.25); }
