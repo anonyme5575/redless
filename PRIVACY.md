@@ -15,6 +15,9 @@ Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, hébergé da
 
 Ces données servent uniquement à établir le classement et l'événement mensuel. Elles ne sont ni vendues ni partagées. Base légale : l'exécution du service demandé (le classement).
 
+## Statistiques de visite (site web uniquement)
+Sur le site web, **Vercel Web Analytics** compte les visites de façon anonyme : page vue, pays, type d'appareil, de système et de navigateur, site d'origine. Pas de cookie, pas d'identifiant personnel ni de suivi d'un site à l'autre, aucune donnée de jeu. L'application Android ne contient pas cet outil.
+
 ## Permissions Android
 - **Internet** : envoyer les scores et afficher le classement mondial.
 - **Vibreur** : retours haptiques (désactivable dans Réglages).

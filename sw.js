@@ -34,7 +34,7 @@ async function rangeResponse(request, full) {
 
 self.addEventListener("fetch", (e) => {
   const req = e.request, url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== location.origin) return;
+  if (req.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/_vercel/")) return;
   const isAudio = url.pathname.endsWith(".mp3");
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
