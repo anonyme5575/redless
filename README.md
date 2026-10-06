@@ -48,6 +48,10 @@ Via Supabase (offre gratuite) : un pseudo, un identifiant anonyme par téléphon
 L'**événement** démarre **7 jours après le 30e joueur**, puis le classement **repart de zéro chaque mois** (saison 1, 2, 3…). Le classement est général : une ligne par joueur, avec le total de ses meilleurs scores de la saison dans tous les modes ; toucher un joueur ouvre son profil (ses scores mode par mode). Sans pseudo, le jeu en donne un automatiquement (« Pilote-1234 »), modifiable dans Réglages. Avant l'événement : pré-saison.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 
+## Mises à jour
+
+À chaque déploiement, le site publie `version.json` (tiré de `VERSION` dans `js/game.js`). Si le jeu installé est plus ancien, une barre **« Mettre à jour »** apparaît : l'appli web se recharge, l'appli Android télécharge le nouvel APK publié par GitHub (release « latest »). Pour sortir une version : changer `VERSION` (game.js), `CACHE` (sw.js), `app-version` (index.html) et `VERSION_CODE/NAME` (android/build.sh).
+
 ## Confort
 
 - **Tutoriel** interactif en 8 étapes au premier lancement (revoir dans Réglages).

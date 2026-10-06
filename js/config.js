@@ -6,7 +6,10 @@ window.NT = window.NT || {};
   // Music tracks. bpm/offset were measured on the file; "synth" is generated live at any tempo.
   const TRACKS = {
     sync: { name: "Sync or Die", src: "audio/sync-or-die.mp3", bpm: 100, offset: 0.055 },
-    synth: { name: "Synthé", src: null },
+    synth: { name: "Synthé", src: null, style: "synth" },
+    // Two more tracks played live by the synth (no file): unlocked in the shop.
+    drive: { name: "Néon Drive", src: null, style: "drive" },
+    chip: { name: "8-bit Rush", src: null, style: "chip" },
   };
   // Menu music: the original file, played as is (normal speed, untouched).
   const MENU_TRACK = "audio/sync-or-die-original.mp3";
@@ -64,6 +67,9 @@ window.NT = window.NT || {};
     },
   };
 
+  // req (optional) = condition to meet before buying, on top of the price:
+  //   rank: "Pilote" · games: 30 (games played) · best: { mode, score } · combo: 40 (best combo)
+  //   bosses: 3 (bosses beaten) · missions: 15 (missions completed)
   const CATALOG = {
     skin: [
       { id: "minuit", name: "Holo",    price: 0,    colors: ["#040a11", "#36c9ff", "#2bff8a", "#ff2d55"] },
@@ -71,21 +77,40 @@ window.NT = window.NT || {};
       { id: "neon",   name: "Néon",    price: 400,  colors: ["#090414", "#c45cff", "#39ff9f", "#ff2e88"] },
       { id: "ocean",  name: "Océan",   price: 600,  colors: ["#020d14", "#4ef0e0", "#7dff6a", "#ff5d73"] },
       { id: "lave",   name: "Lave",    price: 800,  colors: ["#120604", "#ff7a3c", "#b8f25c", "#ff2f4f"] },
+      { id: "sakura", name: "Sakura",  price: 900,  colors: ["#12060c", "#ff8fc7", "#7dffb0", "#ff3b5c"], req: { games: 30 } },
+      { id: "glace",  name: "Glace",   price: 1000, colors: ["#04101a", "#a8e6ff", "#6dffd8", "#ff5577"], req: { best: { mode: "chrono", score: 80 } } },
       { id: "shadow", name: "Chrome",  price: 1200, colors: ["#08090a", "#e8edf2", "#4be38a", "#f2424f"] },
+      { id: "vapeur", name: "Vapeur",  price: 1400, colors: ["#10041a", "#ff6ad5", "#00f5d4", "#ff3366"], req: { missions: 15 } },
+      { id: "or",     name: "Or",      price: 2000, colors: ["#0e0a02", "#ffd25a", "#8dff6a", "#ff4040"], req: { rank: "Élite" } },
     ],
     fx: [
       { id: "eclats",   name: "Éclats",    price: 0 },
       { id: "confetti", name: "Confettis", price: 200 },
       { id: "onde",     name: "Onde",      price: 350 },
       { id: "pixels",   name: "Pixels",    price: 500 },
+      { id: "spirale",  name: "Spirale",   price: 600 },
+      { id: "etoiles",  name: "Étoiles",   price: 700,  req: { rank: "Pilote" } },
       { id: "eclair",   name: "Éclair",    price: 900 },
+      { id: "flammes",  name: "Flammes",   price: 1000, req: { combo: 40 } },
+      { id: "glitch",   name: "Glitch",    price: 1200, req: { best: { mode: "sudden", score: 60 } } },
+      { id: "nova",     name: "Nova",      price: 1800, req: { bosses: 3 } },
     ],
     shape: [
-      { id: "carre",   name: "Biseau",   price: 0 },
-      { id: "cercle",  name: "Cercle",   price: 150 },
-      { id: "losange", name: "Losange",  price: 300 },
-      { id: "hexa",    name: "Hexagone", price: 450 },
-      { id: "etoile",  name: "Étoile",   price: 700 },
+      { id: "carre",    name: "Biseau",   price: 0 },
+      { id: "cercle",   name: "Cercle",   price: 150 },
+      { id: "losange",  name: "Losange",  price: 300 },
+      { id: "hexa",     name: "Hexagone", price: 450 },
+      { id: "triangle", name: "Triangle", price: 550 },
+      { id: "etoile",   name: "Étoile",   price: 700 },
+      { id: "octo",     name: "Octogone", price: 800,  req: { games: 20 } },
+      { id: "bouclier", name: "Bouclier", price: 1100, req: { rank: "Vétéran" } },
+    ],
+    // Music: ids are TRACKS keys. Bought here, picked here or in Réglages.
+    music: [
+      { id: "sync",  name: "Sync or Die", price: 0 },
+      { id: "synth", name: "Synthé",      price: 0 },
+      { id: "drive", name: "Néon Drive",  price: 500 },
+      { id: "chip",  name: "8-bit Rush",  price: 700, req: { rank: "Cadet" } },
     ],
   };
 

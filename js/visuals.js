@@ -85,11 +85,30 @@
       for (let i = 0; i < 6; i++) parts.push({ type: "bolt", x, y, a: (i / 6) * Math.PI * 2 + Math.random() * 0.5, len: 30 + Math.random() * 40, life: 1, color });
       return;
     }
-    const palette = kind === "confetti" ? [cssVar("--green"), cssVar("--gold"), cssVar("--holo"), cssVar("--red")] : [color];
+    if (kind === "spirale") {
+      for (let i = 0; i < (big ? 24 : 16); i++) parts.push({ type: "spiral", cx: x, cy: y, a: (i / 8) * Math.PI, r: 2 + i * 1.2, va: 0.16, vr: 1.6 + Math.random(), life: 1, size: 2.5, color: i % 2 ? color : cssVar("--holo") });
+      return;
+    }
+    if (kind === "flammes") {
+      const fire = ["#ffe066", "#ffa03a", "#ff4d2e"];
+      for (let i = 0; i < (big ? 26 : 16); i++) parts.push({ type: "flame", x: x + (Math.random() - 0.5) * 22, y, vx: (Math.random() - 0.5) * 1.2, vy: -1.5 - Math.random() * 3, life: 1, size: 4 + Math.random() * 5, color: fire[i % 3] });
+      return;
+    }
+    if (kind === "glitch") {
+      parts.push({ type: "slice", x: x - 40, y: y - 3, w: 80, h: 6, life: 0.8, color: cssVar("--red") });
+      for (let i = 0; i < (big ? 14 : 9); i++) parts.push({ type: "slice", x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 50, w: 10 + Math.random() * 50, h: 2 + Math.random() * 6, life: 0.6 + Math.random() * 0.4, color: i % 3 ? color : cssVar("--holo") });
+      return;
+    }
+    if (kind === "nova") {
+      parts.push({ type: "flash", x, y, r: 6, life: 1, color });
+      parts.push({ type: "ring", x, y, r: 4, life: 1.3, color: cssVar("--gold") });
+    }
+    const palette = kind === "confetti" ? [cssVar("--green"), cssVar("--gold"), cssVar("--holo"), cssVar("--red")]
+      : kind === "etoiles" ? [cssVar("--gold"), color, "#ffffff"] : kind === "nova" ? [cssVar("--gold"), color] : [color];
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * (big ? 6 : 4);
       parts.push({
-        type: kind === "pixels" ? "px" : kind === "confetti" ? "conf" : "shard",
+        type: kind === "pixels" ? "px" : kind === "confetti" ? "conf" : kind === "etoiles" ? "star" : "shard",
         x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kind === "confetti" ? 2 : 0),
         rot: Math.random() * 6, life: 1, size: kind === "pixels" ? 5 + Math.random() * 4 : 2 + Math.random() * 3,
         color: palette[i % palette.length],
@@ -119,10 +138,27 @@
         fxCtx.beginPath(); fxCtx.moveTo(p.x + Math.cos(p.a) * d * 0.4, p.y + Math.sin(p.a) * d * 0.4);
         fxCtx.lineTo(p.x + Math.cos(p.a + 0.3) * d * 0.7, p.y + Math.sin(p.a + 0.3) * d * 0.7);
         fxCtx.lineTo(p.x + Math.cos(p.a) * d, p.y + Math.sin(p.a) * d); fxCtx.stroke();
+      } else if (p.type === "spiral") {
+        p.a += p.va * k; p.r += p.vr * k;
+        fxCtx.beginPath(); fxCtx.arc(p.cx + Math.cos(p.a) * p.r, p.cy + Math.sin(p.a) * p.r, p.size, 0, Math.PI * 2); fxCtx.fill();
+      } else if (p.type === "flame") {
+        p.x += p.vx * k; p.y += p.vy * k; p.vy *= 0.985;
+        fxCtx.beginPath(); fxCtx.arc(p.x, p.y, Math.max(0.5, p.size * p.life), 0, Math.PI * 2); fxCtx.fill();
+      } else if (p.type === "slice") {
+        p.life -= 0.02 * k; // glitch lines vanish faster
+        fxCtx.fillRect(p.x + (Math.random() - 0.5) * 8, p.y, p.w, p.h);
+      } else if (p.type === "flash") {
+        p.r += 5 * k; fxCtx.globalAlpha = Math.max(0, p.life * 0.45);
+        fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2); fxCtx.fill();
       } else {
         p.x += p.vx * k; p.y += p.vy * k; p.vy += (p.type === "conf" ? 0.12 : 0.16) * k; p.vx *= 0.98; p.rot += 0.2 * k;
         if (p.type === "px") fxCtx.fillRect(Math.round(p.x / 4) * 4, Math.round(p.y / 4) * 4, p.size, p.size);
         else if (p.type === "conf") { fxCtx.save(); fxCtx.translate(p.x, p.y); fxCtx.rotate(p.rot); fxCtx.fillRect(-4, -2, 8, 4); fxCtx.restore(); }
+        else if (p.type === "star") {
+          fxCtx.save(); fxCtx.translate(p.x, p.y); fxCtx.rotate(p.rot); fxCtx.beginPath();
+          for (let i = 0; i < 10; i++) { const r = i % 2 ? p.size : p.size * 2.4, a = (i * Math.PI) / 5; fxCtx[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r); }
+          fxCtx.closePath(); fxCtx.fill(); fxCtx.restore();
+        }
         else {
           fxCtx.save(); fxCtx.translate(p.x, p.y); fxCtx.rotate(p.rot);
           fxCtx.beginPath(); fxCtx.moveTo(0, -p.size * 2); fxCtx.lineTo(p.size, p.size); fxCtx.lineTo(-p.size, p.size); fxCtx.fill(); fxCtx.restore();

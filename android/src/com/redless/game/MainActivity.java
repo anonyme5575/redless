@@ -76,6 +76,21 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Opens a web link outside the game (used to download a new version of the APK). */
+        @JavascriptInterface
+        public void openUrl(final String url) {
+            if (url == null || !url.startsWith("https://")) return;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        }
+
         @JavascriptInterface
         public void shareText(final String text) {
             runOnUiThread(new Runnable() {

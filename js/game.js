@@ -3,18 +3,19 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.7";
+  const VERSION = "2.8";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
   const defaults = {
     coins: 0, bests: {}, games: 0, name: "", mode: "classic",
-    owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"] },
+    owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"], music: ["sync", "synth"] },
     equipped: { skin: "minuit", fx: "eclats", shape: "carre" },
     sound: true,
     musicVol: 0.9, sfxVol: 0.8, vibration: true, colorblind: false, track: "sync",
     latency: 0, calibrated: false, tutorialDone: false, xp: 0,
     daily: { date: "", score: null, best: 0 }, missions: { date: "", list: [] }, duels: {},
+    stats: { maxCombo: 0, bosses: 0, missions: 0 }, // unlock conditions of the shop
   };
   const clone = (o) => JSON.parse(JSON.stringify(o));
   function load() {
@@ -23,7 +24,8 @@
       if (!raw) return clone(defaults);
       const s = JSON.parse(raw);
       const out = { ...clone(defaults), ...s,
-        owned: { ...defaults.owned, ...s.owned }, equipped: { ...defaults.equipped, ...s.equipped } };
+        owned: { ...defaults.owned, ...s.owned }, equipped: { ...defaults.equipped, ...s.equipped },
+        stats: { ...defaults.stats, ...s.stats } };
       // Older saves: one global best, mode-less scores, no tutorial flag.
       if (typeof s.best === "number" && !out.bests.classic) out.bests.classic = s.best;
       const oldScores = Array.isArray(s.scores) ? s.scores : [];
@@ -92,6 +94,7 @@
     current = id;
     for (const k in screens) screens[k].hidden = k !== id;
     updateMenuMusic();
+    try { showUpdateBar(); } catch {} // hidden during a run
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
        settings: renderSettings, duel: renderDuel, calib: renderCalib, "modes-screen": renderModes })[id]?.();
@@ -648,6 +651,9 @@
     }
     if (G.modeId === "duel") { S.duels[G.code] = Math.max(S.duels[G.code] || 0, G.score); tag = `Duel ${G.code}`; }
     const done = applyRunToMissions(run);
+    S.stats.maxCombo = Math.max(S.stats.maxCombo, G.maxCombo);
+    S.stats.bosses += G.bosses || 0;
+    S.stats.missions += done.length;
     save();
 
     const c = G.cause || { type: "red" }, [title, explain] = CAUSES[c.type] || CAUSES.red;
@@ -728,7 +734,7 @@
   let lastStart = { modeId: "classic", opts: {} };
   function startGame(modeId = S.mode, opts = {}) {
     Synth.init(); Synth.applyVolume();
-    if (S.track !== "synth") Music.unlock(S.track);
+    if (TRACKS[S.track].src) Music.unlock(S.track);
     if (!S.tutorialDone && !opts.skipTuto) return startTutorial(() => startGame(modeId, { ...opts, skipTuto: true }));
     lastStart = { modeId, opts };
     Music.stop();
@@ -736,7 +742,7 @@
     show("play");
     fx.sizeCanvases();
     countdown(async () => {
-      G.trackOn = S.track !== "synth" && (await Music.start(S.track, effBpm()));
+      G.trackOn = !!TRACKS[S.track].src && (await Music.start(S.track, effBpm()));
       G.rateBpm = effBpm();
       G.running = true;
     });
@@ -858,10 +864,44 @@
     losange: "polygon(50% 2%, 98% 50%, 50% 98%, 2% 50%)",
     hexa: "polygon(25% 4%, 75% 4%, 98% 50%, 75% 96%, 25% 96%, 2% 50%)",
     etoile: "polygon(50% 0, 63% 32%, 98% 35%, 71% 58%, 80% 94%, 50% 75%, 20% 94%, 29% 58%, 2% 35%, 37% 32%)",
+    triangle: "polygon(50% 4%, 97% 94%, 3% 94%)",
+    octo: "polygon(30% 2%, 70% 2%, 98% 30%, 98% 70%, 70% 98%, 30% 98%, 2% 70%, 2% 30%)",
+    bouclier: "polygon(50% 2%, 96% 16%, 92% 60%, 50% 98%, 8% 60%, 4% 16%)",
   };
+  // Shop unlock condition: { ok, text } (text says what is needed, with the progress).
+  function reqInfo(req) {
+    if (!req) return { ok: true, text: "" };
+    if (req.rank) {
+      const r = RANKS.find((x) => x.name === req.rank);
+      return { ok: S.xp >= r.xp, text: `Rang ${req.rank}` };
+    }
+    if (req.games) return { ok: S.games >= req.games, text: `${req.games} parties (${Math.min(S.games, req.games)}/${req.games})` };
+    if (req.best) {
+      const v = S.bests[req.best.mode] || 0;
+      return { ok: v >= req.best.score, text: `${req.best.score} pts en ${MODES[req.best.mode].name} (record ${v})` };
+    }
+    if (req.combo) return { ok: S.stats.maxCombo >= req.combo, text: `Combo de ${req.combo} (record ${S.stats.maxCombo})` };
+    if (req.bosses) return { ok: S.stats.bosses >= req.bosses, text: `${req.bosses} boss battus (${Math.min(S.stats.bosses, req.bosses)}/${req.bosses})` };
+    if (req.missions) return { ok: S.stats.missions >= req.missions, text: `${req.missions} missions (${Math.min(S.stats.missions, req.missions)}/${req.missions})` };
+    return { ok: true, text: "" };
+  }
+  // Music preview in the shop: 8 beats of the track, played live by the synth.
+  let previewTimers = [];
+  function previewMusic(id) {
+    previewTimers.forEach(clearTimeout); previewTimers = [];
+    const style = TRACKS[id].style;
+    if (!style) return;
+    Synth.init(); MenuMusic.suspend();
+    const spb = 60 / 112;
+    for (let k = 0; k < 8; k++) previewTimers.push(setTimeout(() => Synth.beat(k, spb, 2, style), k * spb * 1000));
+    previewTimers.push(setTimeout(() => updateMenuMusic(), 8 * spb * 1000 + 300));
+  }
   function itemPreview(cat, item) {
     const p = document.createElement("div");
-    if (cat === "skin") {
+    if (cat === "music") {
+      p.className = "preview preview-music";
+      p.textContent = "♪";
+    } else if (cat === "skin") {
       const [bg, holo, g, r] = item.colors;
       p.className = "preview"; p.style.background = bg; p.style.boxShadow = `inset 0 0 0 1px ${holo}`;
       [g, r, g].forEach((c) => { const s = document.createElement("span"); s.style.background = c; p.appendChild(s); });
@@ -877,19 +917,26 @@
   function renderShop() {
     bindAll();
     const list = $("#shop-list"); list.innerHTML = "";
+    const isMusic = shopCat === "music";
     for (const item of CATALOG[shopCat]) {
-      const owned = S.owned[shopCat].includes(item.id), on = S.equipped[shopCat] === item.id;
+      const owned = S.owned[shopCat].includes(item.id), on = isMusic ? S.track === item.id : S.equipped[shopCat] === item.id;
       const previewing = preview && preview.id === item.id;
+      const cond = reqInfo(item.req), blocked = !owned && !cond.ok;
       const b = document.createElement("button");
-      b.className = "item" + (on ? " equipped" : "") + (owned ? "" : " locked") + (!owned && S.coins < item.price ? " cant" : "") + (previewing ? " previewing" : "");
+      b.className = "item" + (on ? " equipped" : "") + (owned ? "" : " locked") + (!owned && (S.coins < item.price || blocked) ? " cant" : "")
+        + (blocked ? " blocked" : "") + (previewing ? " previewing" : "");
       b.dataset.frame = "sm";
       b.appendChild(itemPreview(shopCat, item));
       const n = document.createElement("span"); n.className = "name"; n.textContent = item.name; b.appendChild(n);
+      if (!owned && item.req) {
+        const c = document.createElement("span"); c.className = "cond" + (cond.ok ? " ok" : "");
+        c.textContent = (cond.ok ? "✓ " : "🔒 ") + cond.text; b.appendChild(c);
+      }
       const st = document.createElement("span"); st.className = "state";
-      if (on) st.textContent = "Équipé";
-      else if (owned) st.textContent = "Équiper";
-      else if (previewing) st.innerHTML = `Acheter · <span class="coin"></span>${item.price}`;
-      else st.innerHTML = `<span class="coin"></span>${item.price} · essayer`;
+      if (on) st.textContent = isMusic ? "Choisie" : "Équipé";
+      else if (owned) st.textContent = isMusic ? "Choisir" : "Équiper";
+      else if (previewing) st.innerHTML = blocked ? "Condition à remplir" : `Acheter · <span class="coin"></span>${item.price}`;
+      else st.innerHTML = `<span class="coin"></span>${item.price} · ${isMusic ? "écouter" : "essayer"}`;
       b.appendChild(st);
       b.onclick = () => {
         Synth.init();
@@ -899,15 +946,17 @@
           if (shopCat === "skin") applyLook(item.id, S.equipped.shape);
           if (shopCat === "shape") applyLook(S.equipped.skin, item.id);
           if (shopCat === "fx") { const a = app.getBoundingClientRect(), r = $("#shop-preview").getBoundingClientRect(); fx.burst(r.left - a.left + r.width / 2, r.top - a.top + r.height / 2, cssVar("--green"), item.id, true); }
-          sfx("ui");
-          toast(`Aperçu de ${item.name} · touche encore pour l'acheter`);
+          if (isMusic) previewMusic(item.id); else sfx("ui");
+          toast(blocked ? `Aperçu de ${item.name} · à débloquer : ${cond.text}` : `Aperçu de ${item.name} · touche encore pour l'acheter`);
           return renderShop();
         }
         if (!owned) {
+          if (blocked) { endPreview(); renderShop(); return toast(`Pas encore : ${cond.text}`); }
           if (S.coins < item.price) { endPreview(); renderShop(); return toast(`Il te manque ${item.price - S.coins} crédits`); }
           S.coins -= item.price; S.owned[shopCat].push(item.id); toast(`${item.name} débloqué`);
         }
         endPreview();
+        if (isMusic) { S.track = item.id; save(); sfx("ui"); haptic("ui"); previewMusic(item.id); return renderShop(); }
         S.equipped[shopCat] = item.id; save(); applyLook(); sfx("ui"); haptic("ui");
         if (shopCat === "fx") { const a = app.getBoundingClientRect(), r = b.getBoundingClientRect(); fx.burst(r.left - a.left + r.width / 2, r.top - a.top + r.height / 3, cssVar("--green"), item.id); }
         renderShop();
@@ -1080,7 +1129,7 @@
     $("#set-latency").textContent = S.calibrated ? `${Math.round(S.latency * 1000)} ms compensés` : "Non calibré";
     $("#app-version").textContent = VERSION;
     const seg = $("#set-track"); seg.innerHTML = "";
-    for (const id of Object.keys(TRACKS)) {
+    for (const id of Object.keys(TRACKS).filter((t) => S.owned.music.includes(t))) { // more in the shop
       const b = document.createElement("button");
       b.textContent = TRACKS[id].name; b.setAttribute("aria-pressed", S.track === id);
       if (TRACKS[id].src && Music.failed[id]) { b.disabled = true; b.title = "Fichier absent de cette version"; }
@@ -1289,7 +1338,7 @@
     $("#calib-count").textContent = "Écoute…";
     $("#calib-result").textContent = "";
     const c = calib;
-    const track = S.track !== "synth" && (await Music.start(S.track, TRACKS[S.track].bpm));
+    const track = !!TRACKS[S.track].src && (await Music.start(S.track, TRACKS[S.track].bpm));
     if (calib !== c) return; // left the screen meanwhile
     if (track) { calib.mode = "track"; return; }
     // Synth clicks every 600 ms, scheduled on the audio clock.
@@ -1529,6 +1578,53 @@
   }
   if (NT.online.enabled) setTimeout(() => NT.online.flush(S.name), 3000);
   setTimeout(() => $("#splash")?.remove(), 1000); // startup animation is over
+
+  // ---------- update available ----------
+  // The site publishes version.json (written at deploy from VERSION). If it is newer than this
+  // copy, a bar offers « Mettre à jour »: the web app refreshes itself, the Android app downloads
+  // the new APK (published by the GitHub workflow under the « latest » release).
+  const SITE = "https://redless.vercel.app/";
+  const APK_URL = "https://github.com/anonyme5575/redless/releases/download/latest/redless.apk";
+  const newer = (a, b) => {
+    const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+    return false;
+  };
+  let updateTo = null, updateHidden = false, updateAt = 0;
+  async function checkUpdate() {
+    if (Date.now() - updateAt < 60000) return;
+    updateAt = Date.now();
+    try {
+      const base = NT.native() || location.protocol === "file:" ? SITE : "";
+      const res = await fetch(`${base}version.json?t=${Date.now()}`, { cache: "no-store" });
+      const v = res.ok && (await res.json()).version;
+      if (v && newer(v, VERSION)) { updateTo = v; showUpdateBar(); }
+    } catch {}
+  }
+  function showUpdateBar() {
+    const bar = $("#update-bar");
+    bar.hidden = !updateTo || updateHidden || current === "play";
+    if (updateTo) $("#update-text").innerHTML = `Nouvelle version <b>${updateTo}</b> disponible`;
+  }
+  $("#btn-update-close").onclick = () => { updateHidden = true; showUpdateBar(); };
+  $("#btn-update").onclick = async () => {
+    const n = NT.native();
+    if (n) {
+      if (n.openUrl) { n.openUrl(APK_URL); toast("Téléchargement de la nouvelle version…"); }
+      else toast("Télécharge la nouvelle version sur " + SITE);
+      return;
+    }
+    $("#btn-update").disabled = true; $("#update-text").textContent = "Mise à jour…";
+    try {
+      // Drop the offline copy, fetch the new service worker, then reload from the server.
+      const keys = await caches.keys(); await Promise.all(keys.map((k) => caches.delete(k)));
+      const reg = await navigator.serviceWorker?.getRegistration(); if (reg) await reg.update();
+    } catch {}
+    location.reload();
+  };
+  setTimeout(checkUpdate, 2500);
+  setInterval(checkUpdate, 15 * 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 
   // ---------- boot ----------
   applyLook();

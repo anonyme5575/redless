@@ -154,8 +154,11 @@
     // "Synthé" track: one call per beat. A minor, Am F C G, one chord per bar.
     BASS: [110, 87.31, 130.81, 98],
     ARP: [[440, 523.25, 659.25], [349.23, 440, 523.25], [523.25, 659.25, 783.99], [392, 493.88, 587.33]],
-    beat(n, spb, level) {
+    beat(n, spb, level, styleOverride) {
       if (!this.ctx) return;
+      const style = styleOverride || (TRACKS[S().track] || {}).style;
+      if (style === "drive") return this.beatDrive(n, spb, level);
+      if (style === "chip") return this.beatChip(n, spb, level);
       const out = this.bus, at = this.t(), inBar = n % 4, bar = Math.floor(n / 4) % 4, root = this.BASS[bar];
       this.kick(at, out);
       if (inBar === 1 || inBar === 3) this.snare(at, out);
@@ -163,6 +166,36 @@
       if (level >= 3) { this.hat(at + spb / 4, 0.07, out); this.hat(at + (3 * spb) / 4, 0.07, out); }
       this.tone(root, at, spb * 0.9, "sawtooth", 0.08, out);
       if (level >= 2) this.tone(this.ARP[bar][n % 3], at + spb / 2, spb * 0.4, "square", 0.035, out);
+    },
+    // "Néon Drive": synthwave in E minor, Em C G D. Octave bass on the eighths, a pad on each bar,
+    // a sixteenth-note arpeggio from level 2.
+    DRIVE: [[82.41, [329.63, 392, 493.88]], [65.41, [261.63, 329.63, 392]], [98, [392, 493.88, 587.33]], [73.42, [293.66, 369.99, 440]]],
+    beatDrive(n, spb, level) {
+      const out = this.bus, at = this.t(), inBar = n % 4, [root, arp] = this.DRIVE[Math.floor(n / 4) % 4];
+      this.kick(at, out);
+      if (inBar === 1 || inBar === 3) this.snare(at, out, 0.3);
+      this.hat(at + spb / 2, 0.12, out);
+      this.tone(root, at, spb * 0.45, "sawtooth", 0.07, out);
+      this.tone(root * 2, at + spb / 2, spb * 0.45, "sawtooth", 0.06, out);
+      if (inBar === 0) this.tone(arp[0], at, spb * 3.8, "sine", 0.03, out);
+      if (level >= 2) for (let k = 0; k < 4; k++) this.tone(arp[(n * 4 + k) % 3] * (k === 3 ? 2 : 1), at + (k * spb) / 4, spb * 0.22, "triangle", 0.035, out);
+    },
+    // "8-bit Rush": chiptune in C major, C Am F G. Square-wave bass and melody, noise drums;
+    // the melody doubles its speed from level 2.
+    CHIP: [[130.81, [523.25, 659.25, 783.99]], [110, [440, 523.25, 659.25]], [87.31, [349.23, 440, 523.25]], [98, [392, 493.88, 587.33]]],
+    CHIP_MELODY: [0, 1, 2, 1, 2, 3, 2, 1, 0, 2, 1, 3, 2, 1, 0, 1],
+    beatChip(n, spb, level) {
+      const out = this.bus, at = this.t(), inBar = n % 4, [root, ch] = this.CHIP[Math.floor(n / 4) % 4];
+      if (inBar === 0 || inBar === 2) this.kick(at, out);
+      if (inBar === 1 || inBar === 3) this.snare(at, out, 0.22);
+      this.hat(at + spb / 2, 0.1, out);
+      this.tone(root, at, spb * 0.3, "square", 0.05, out);
+      this.tone(root, at + spb / 2, spb * 0.3, "square", 0.05, out);
+      const steps = level >= 2 ? 4 : 2;
+      for (let k = 0; k < steps; k++) {
+        const i = this.CHIP_MELODY[(inBar * 4 + k * (4 / steps)) % 16], f = i === 3 ? ch[0] * 2 : ch[i];
+        this.tone(f, at + (k * spb) / steps, (spb / steps) * 0.7, "square", 0.03, out);
+      }
     },
     click(at, accent) { if (this.ctx) this.tone(accent ? 1760 : 1320, at, 0.05, "square", 0.12, this.sfx); },
     PENTA: [440, 523.25, 587.33, 659.25, 783.99],
