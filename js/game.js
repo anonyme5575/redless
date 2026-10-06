@@ -1321,6 +1321,10 @@
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !NT.native()) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
+  // Install notice to the server (the owner gets an e-mail): Android app, or web app opened from the home screen.
+  const installPlatform = NT.native() ? "android" : standalone ? (isIOS ? "ios" : "web-app") : null;
+  if (installPlatform) setTimeout(() => NT.online.registerInstall(installPlatform, VERSION), 2000);
+  window.addEventListener("appinstalled", () => NT.online.registerInstall("web-app", VERSION));
   let installPrompt = null;
   function installDismissed() { try { return localStorage.getItem("redless-install-hidden") === "1"; } catch { return false; } }
   function showInstall(html, withButton) {

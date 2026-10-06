@@ -204,3 +204,70 @@ grant execute on function public.get_leaderboard(text, int, int) to anon, authen
 grant execute on function public.submit_score(text, int, int, int, int, text) to authenticated;
 grant execute on function public.set_name(text) to authenticated;
 grant execute on function public.redless_settings() to anon, authenticated;
+
+-- =====================================================================
+-- Installations : un e-mail au propriétaire à chaque nouvelle installation
+-- (premier lancement de l'APK, ou de l'appli installée depuis Safari / Chrome).
+-- Envoi par Resend (https://resend.com) via pg_net. Clé Resend rangée dans le
+-- coffre Supabase (Vault) : voir supabase/README.md, section « E-mail ».
+-- =====================================================================
+create extension if not exists pg_net with schema extensions;
+
+create or replace function public.redless_install_settings()
+returns table (notify_email text, max_mails_per_hour int)
+language sql immutable as $$ select 'scalariapp@gmail.com', 30 $$;
+
+create table if not exists public.installs (
+  id bigint generated always as identity primary key,
+  device_id uuid not null unique,
+  platform text not null check (platform in ('android', 'ios', 'web-app')),
+  version text,
+  created_at timestamptz not null default now()
+);
+alter table public.installs enable row level security;
+revoke all on public.installs from anon, authenticated;
+
+-- Called once per device at first launch. No account needed.
+-- Same device twice = ignored. Above the hourly cap, installs are still counted but not mailed.
+create or replace function public.register_install(p_device uuid, p_platform text, p_version text default null)
+returns boolean
+language plpgsql volatile security definer set search_path = public, extensions as $$
+declare
+  cfg record;
+  total int;
+  recent int;
+  api_key text;
+begin
+  if p_device is null or p_platform not in ('android', 'ios', 'web-app') then raise exception 'installation invalide'; end if;
+  insert into public.installs (device_id, platform, version)
+    values (p_device, p_platform, left(coalesce(p_version, ''), 20))
+    on conflict (device_id) do nothing;
+  if not found then return false; end if;
+
+  select * into cfg from redless_install_settings();
+  total := (select count(*) from public.installs)::int;
+  recent := (select count(*) from public.installs where created_at > now() - interval '1 hour')::int;
+  if recent > cfg.max_mails_per_hour then return true; end if;
+
+  select decrypted_secret into api_key from vault.decrypted_secrets where name = 'resend_api_key' limit 1;
+  if api_key is null then return true; end if; -- e-mail not configured yet: install still counted
+
+  perform net.http_post(
+    url := 'https://api.resend.com/emails',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || api_key, 'Content-Type', 'application/json'),
+    body := jsonb_build_object(
+      'from', 'Redless <onboarding@resend.dev>',
+      'to', jsonb_build_array(cfg.notify_email),
+      'subject', format('Redless : nouvelle installation (%s au total)', total),
+      'text', format(E'Une personne vient d''installer Redless.\n\nPlateforme : %s\nVersion : %s\nDate : %s (UTC)\nInstallations au total : %s\n\n— Supabase, projet Redless',
+                     case p_platform when 'android' then 'Android (APK)' when 'ios' then 'iPhone / iPad (appli web)' else 'Appli web installée' end,
+                     coalesce(nullif(p_version, ''), '?'),
+                     to_char(now() at time zone 'UTC', 'DD/MM/YYYY HH24:MI'),
+                     total)
+    )
+  );
+  return true;
+end $$;
+
+revoke all on function public.register_install(uuid, text, text) from public;
+grant execute on function public.register_install(uuid, text, text) to anon, authenticated;

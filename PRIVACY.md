@@ -15,6 +15,9 @@ Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, hébergé da
 
 Ces données servent uniquement à établir le classement et l'événement mensuel. Elles ne sont ni vendues ni partagées. Base légale : l'exécution du service demandé (le classement).
 
+## Compteur d'installations
+Au premier lancement de l'application installée (APK Android, ou appli ajoutée à l'écran d'accueil sur iPhone ou ordinateur), le jeu envoie **une seule fois** un signal anonyme : un identifiant aléatoire créé sur l'appareil, la plateforme et la version du jeu. Il sert uniquement à compter les installations et à prévenir le créateur du jeu par e-mail. Aucune autre donnée n'est jointe.
+
 ## Permissions Android
 - **Internet** : envoyer les scores et afficher le classement mondial.
 - **Vibreur** : retours haptiques (désactivable dans Réglages).

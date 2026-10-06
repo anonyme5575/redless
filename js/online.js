@@ -7,7 +7,7 @@
   const URL_ = (cfg.url || "").replace(/\/+$/, "");
   const KEY = cfg.key || "";
   const enabled = !!(URL_ && KEY);
-  const AUTH = "redless-auth", QUEUE = "redless-pending";
+  const AUTH = "redless-auth", QUEUE = "redless-pending", DEVICE = "redless-device", INSTALL = "redless-install";
   const GLOBAL_MODES = ["classic", "chrono", "sudden", "feint", "expansion", "rhythm", "mirror"];
 
   const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -91,6 +91,23 @@
   const eventInfo = async () => { const r = await rpc("event_info", {}, false); return r && r[0]; };
   const rename = (name) => rpc("set_name", { p_name: name }, true);
 
+  // One anonymous signal per device at first launch of the installed app (no account needed).
+  // Kept until the server answers, so an offline first launch is reported later.
+  function uuid() {
+    try { return crypto.randomUUID(); } catch {
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === "x" ? r : (r & 3) | 8).toString(16); });
+    }
+  }
+  async function registerInstall(platform, version) {
+    if (!enabled || read(INSTALL, null) === "sent") return;
+    let dev = read(DEVICE, null);
+    if (!dev) { dev = uuid(); write(DEVICE, dev); }
+    try {
+      await http("/rest/v1/rpc/register_install", { p_device: dev, p_platform: platform, p_version: version }, null);
+      write(INSTALL, "sent");
+    } catch {}
+  }
+
   window.addEventListener("online", () => flush());
-  NT.online = { enabled, GLOBAL_MODES, submit, flush, leaderboard, eventInfo, rename, pending: () => read(QUEUE, []).length };
+  NT.online = { enabled, GLOBAL_MODES, submit, flush, leaderboard, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length };
 })();

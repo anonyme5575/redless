@@ -40,6 +40,25 @@ window.REDLESS_ONLINE = {
 ```
 Puis reconstruire l'APK (`android/build.sh`). Vercel redéploie tout seul à la fusion dans `main`.
 
+## 6. E-mail à chaque installation
+Le serveur prévient **scalariapp@gmail.com** à chaque nouvelle installation : premier lancement de l'APK, ou appli ajoutée à l'écran d'accueil. L'envoi passe par **Resend**, gratuit jusqu'à 100 e-mails par jour.
+1. Crée un compte sur **https://resend.com** **avec l'adresse scalariapp@gmail.com**. Sans domaine vérifié, Resend n'envoie qu'à l'adresse du compte, et c'est justement celle-là.
+2. Resend → **API Keys** → **Create API Key**, avec la permission **Sending access**. Copie la clé, qui commence par `re_`.
+3. Supabase → **SQL Editor** : relance `schema.sql` (il ajoute la table `installs` et active `pg_net`), puis exécute, en remplaçant la clé :
+   ```sql
+   select vault.create_secret('re_TA_CLE_ICI', 'resend_api_key');
+   ```
+   La clé reste chiffrée dans le coffre de Supabase. **Ne la donne à personne**, elle permet d'envoyer des e-mails en ton nom.
+4. Test : désinstalle puis réinstalle l'APK, ouvre-le. L'e-mail arrive dans la minute ; pense à regarder les **Spams** la première fois.
+
+Garde-fous :
+- le même appareil n'est compté qu'une fois ;
+- au-delà de 30 installations par heure, elles sont comptées sans e-mail, pour éviter l'inondation ;
+- liste complète dans **Table Editor** → `installs`.
+
+Pour changer l'adresse ou le plafond : fonction `redless_install_settings()` dans `schema.sql`.
+Pour changer la clé : `select vault.update_secret((select id from vault.secrets where name = 'resend_api_key'), 're_NOUVELLE_CLE');`
+
 ## Fonctionnement
 | Règle | Où |
 |---|---|
