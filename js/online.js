@@ -112,6 +112,9 @@
     } finally { flushing = false; }
   }
   const leaderboard = (mode, season = null, limit = 50) => rpc("get_leaderboard", { p_mode: mode, p_season: season, p_limit: limit }, false);
+  // One row per player (total of their best scores in every mode), and one player's scores mode by mode.
+  const overall = (season = null, limit = 100) => rpc("get_overall", { p_season: season, p_limit: limit }, false);
+  const profile = (name, season = null) => rpc("get_profile", { p_name: name, p_season: season }, false);
   const eventInfo = async () => { const r = await rpc("event_info", {}, false); return r && r[0]; };
   const rename = (name) => rpc("set_name", { p_name: name }, true);
 
@@ -235,7 +238,7 @@
 
   window.addEventListener("online", () => flush());
   NT.online = {
-    enabled, GLOBAL_MODES, submit, flush, leaderboard, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length,
+    enabled, GLOBAL_MODES, submit, flush, leaderboard, overall, profile, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length,
     check, parseServer, setServer, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave, url: URL_, key: KEY, custom: cfg === saved, builtIn: { url: builtIn.url || "", key: builtIn.key || "" },
   };
 })();

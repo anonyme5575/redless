@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.6";
+  const VERSION = "2.7";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -80,7 +80,7 @@
   };
   $("#btn-pause").innerHTML = ICONS.pause;
   $("#btn-settings").innerHTML = ICONS.gear;
-  const BACK_TO = { privacy: "settings", calib: "settings" };
+  const BACK_TO = { privacy: "settings", calib: "settings", profile: "ranking" };
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
     b.onclick = () => show(BACK_TO[b.closest(".screen").id] || "menu");
@@ -94,7 +94,7 @@
     updateMenuMusic();
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
-       settings: renderSettings, duel: renderDuel, calib: renderCalib })[id]?.();
+       settings: renderSettings, duel: renderDuel, calib: renderCalib, "modes-screen": renderModes })[id]?.();
     fx.initFrames(sc); fx.redrawFrames(sc);
     if (!reduceMotion) {
       sc.classList.remove("enter"); void sc.offsetWidth; sc.classList.add("enter");
@@ -682,19 +682,30 @@
   // ---------- world leaderboard ----------
   let unsentRun = null;
   const ordinal = (n) => (n === 1 ? "1er" : n + "e");
+  const autoName = () => "Pilote-" + String(1000 + ((Math.random() * 9000) | 0));
   async function onlineSubmit(run) {
     const el = $("#over-online");
     unsentRun = null;
     if (!NT.online.enabled || !NT.online.GLOBAL_MODES.includes(run.mode) || run.score <= 0) { el.hidden = true; return; }
     el.hidden = false; el.className = "over-online";
-    if (!S.name) { unsentRun = run; el.textContent = "Choisis un pseudo ci-dessous pour entrer au classement mondial."; return; }
+    // No pseudo yet: the score still goes straight to the world board, under a generated one.
+    let auto = false;
+    if (!S.name) { S.name = autoName(); save(); auto = true; }
     el.textContent = "Envoi au classement mondial…";
     try {
-      const r = await NT.online.submit(run, S.name);
+      let r;
+      try { r = await NT.online.submit(run, S.name); }
+      catch (e) {
+        if (!auto || !/déjà pris/.test(e.message)) throw e;
+        S.name = autoName(); save();
+        r = await NT.online.submit(run, S.name);
+      }
       if (!r) { el.hidden = true; return; }
       if (r.queued) { el.textContent = "Hors ligne : ton score sera envoyé au classement mondial au retour du réseau."; return; }
       el.className = "over-online ok";
-      el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`;
+      el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`
+        + (auto ? ` · ton pseudo : ${S.name} (à changer ci-dessous ou dans Réglages)` : "");
+      if (auto) { $("#name-form").hidden = false; $("#name-input").value = S.name; }
     } catch (e) {
       el.className = "over-online bad";
       el.textContent = `Classement mondial : ${e.message}.`;
@@ -776,7 +787,7 @@
   $("#btn-again").onclick = () => startGame(lastStart.modeId, { ...lastStart.opts, skipTuto: true });
   $("#btn-daily").onclick = () => startGame("daily");
   $("#btn-shop").onclick = () => show("shop");
-  $("#btn-board").onclick = () => { rankMode = MODES[S.mode].hidden ? "classic" : S.mode; show("ranking"); };
+  $("#btn-board").onclick = () => show("ranking");
   $("#btn-over-menu").onclick = () => show("menu");
   $("#btn-missions").onclick = () => show("missions");
   $("#btn-rank").onclick = () => show("missions");
@@ -786,7 +797,7 @@
 
   // ---------- menu ----------
   function renderMenu() {
-    bindAll(); renderModes(); ensureMissions();
+    bindAll(); renderModePick(); ensureMissions();
     const rk = rankOf(S.xp);
     $("#rank-name").textContent = rk.name;
     $("#rank-bar").style.width = (rk.pct * 100).toFixed(1) + "%";
@@ -799,23 +810,29 @@
     const pill = $("#missions-pill"); pill.hidden = false; pill.textContent = `${doneCount}/3`;
     refreshEventPill();
   }
+  // Home: the chosen mode, in one block that opens the « Modes de jeu » page.
+  function renderModePick() {
+    $("#mode-current").textContent = MODES[S.mode].name;
+    $("#mode-rule").textContent = MODES[S.mode].rule;
+  }
+  $("#btn-modes").onclick = () => { sfx("ui"); show("modes-screen"); };
+  // « Modes de jeu » page: every mode with its rule and record; a tap picks it and goes back home.
   function renderModes() {
     const box = $("#modes"); box.innerHTML = "";
     for (const id of MODE_IDS) {
       const m = MODES[id], b = document.createElement("button");
       b.className = "mode"; b.dataset.frame = "sm";
       b.setAttribute("role", "radio"); b.setAttribute("aria-checked", id === S.mode);
-      b.innerHTML = "<b></b><em></em>";
+      b.innerHTML = "<b></b><span></span><em></em>";
       b.querySelector("b").textContent = m.name;
+      b.querySelector("span").textContent = m.rule;
       b.querySelector("em").textContent = `Record ${S.bests[id] || 0}`;
       b.onclick = () => {
         S.mode = id; save(); sfx("ui"); haptic("ui");
-        box.querySelectorAll(".mode").forEach((x) => x.setAttribute("aria-checked", x === b));
-        $("#mode-rule").textContent = m.rule;
+        show("menu");
       };
       box.appendChild(b);
     }
-    $("#mode-rule").textContent = MODES[S.mode].rule;
     fx.initFrames(box);
   }
   const demo = $("#demo"), demoCells = [];
@@ -901,10 +918,15 @@
   }
 
   // ---------- leaderboard ----------
-  let rankMode = "classic", boardReq = 0;
-  function boardRow(rank, name, small, score, me, k) {
+  let boardReq = 0, boardSeason = null;
+  function boardRow(rank, name, small, score, me, k, onOpen) {
     const li = document.createElement("li");
     if (me) li.className = "me";
+    if (onOpen) {
+      li.classList.add("open"); li.tabIndex = 0; li.setAttribute("role", "button");
+      li.onclick = onOpen;
+      li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } };
+    }
     li.innerHTML = `<span class="rank"></span><span class="who"></span><span class="pts"></span>`;
     li.querySelector(".rank").textContent = rank;
     li.querySelector(".who").textContent = name;
@@ -915,15 +937,7 @@
   }
   function emptyRow(text) { const li = document.createElement("li"); li.className = "empty"; li.textContent = text; return li; }
   function renderBoard() {
-    const tabs = $("#rank-tabs"); tabs.innerHTML = "";
-    for (const id of MODE_IDS) {
-      const t = document.createElement("button");
-      t.className = "tab"; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", id === rankMode);
-      t.textContent = MODES[id].name;
-      t.onclick = () => { rankMode = id; renderBoard(); };
-      tabs.appendChild(t);
-    }
-    $("#event-card").hidden = false;
+    $("#event-card").hidden = true; // shown by renderEvent once the event is announced
     const ol = $("#board-list"); ol.innerHTML = "";
     renderWorld(ol);
   }
@@ -935,22 +949,21 @@
   function renderEvent(info) {
     const main = $("#event-main"), sub = $("#event-sub"), bar = $("#event-bar");
     const now = new Date(info.server_now).getTime();
-    if (!info.threshold_at) {
-      main.textContent = `${info.players} / ${info.players_needed} joueurs`;
-      sub.textContent = `L'événement démarre 7 jours après le ${info.players_needed}e joueur. En attendant, la pré-saison est classée.`;
-      bar.style.width = Math.min(100, (info.players / info.players_needed) * 100) + "%";
-    } else if (info.season === 0) {
+    $("#rank-note").textContent = info.season === 0 ? "Pré-saison · classement mondial" : `Saison ${info.season} · classement mondial du mois`;
+    // Before the event is announced: no card, no player counter.
+    if (!info.threshold_at) return;
+    $("#event-card").hidden = false;
+    if (info.season === 0) {
       const left = new Date(info.event_start).getTime() - now;
       main.textContent = `Début dans ${fmtLeft(left)}`;
-      sub.textContent = `${info.players} joueurs inscrits. La saison 1 commence le ${new Date(info.event_start).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`;
+      sub.textContent = `La saison 1 commence le ${new Date(info.event_start).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`;
       bar.style.width = Math.min(100, (1 - left / (7 * 864e5)) * 100) + "%";
     } else {
       const st = new Date(info.season_start).getTime(), en = new Date(info.season_end).getTime();
       main.textContent = `Saison ${info.season} · fin dans ${fmtLeft(en - now)}`;
-      sub.textContent = "Remise à zéro chaque mois. Épreuve officielle : mode Classique.";
+      sub.textContent = "Total de tous les modes. Remise à zéro chaque mois.";
       bar.style.width = Math.min(100, ((now - st) / (en - st)) * 100) + "%";
     }
-    $("#rank-note").textContent = info.season === 0 ? "Pré-saison · classement mondial" : `Saison ${info.season} · classement mondial du mois`;
     fx.initFrames($("#event-card")); fx.redrawFrames($("#event-card"));
   }
   async function renderWorld(ol) {
@@ -959,24 +972,62 @@
       $("#event-card").hidden = true;
       return ol.appendChild(emptyRow("Le classement mondial n'est pas encore activé sur cette version."));
     }
-    const req = ++boardReq, mode = rankMode;
+    const req = ++boardReq;
     ol.appendChild(emptyRow("Chargement…"));
     try {
-      const [info, rows] = await Promise.all([NT.online.eventInfo(), NT.online.leaderboard(mode)]);
+      const [info, rows] = await Promise.all([NT.online.eventInfo(), NT.online.overall()]);
       if (req !== boardReq || current !== "ranking") return;
       ol.innerHTML = "";
-      if (info) renderEvent(info);
-      if (!rows || !rows.length) return ol.appendChild(emptyRow(`Personne n'est encore classé en ${MODES[mode].name} ce mois-ci. Termine une partie avec un pseudo pour être le premier.`));
+      if (info) { renderEvent(info); boardSeason = info.season; }
+      if (!rows || !rows.length) return ol.appendChild(emptyRow("Personne n'est encore classé ce mois-ci. Termine une partie pour être le premier."));
       let last = 0;
       rows.forEach((r, k) => {
         if (r.rank > last + 1 && last > 0) { const gap = document.createElement("li"); gap.className = "gap"; gap.textContent = "…"; ol.appendChild(gap); }
-        ol.appendChild(boardRow(r.rank, r.name, `Niveau ${r.level} · ${r.bpm} BPM`, r.score, r.is_me, k));
+        const small = `${r.modes} mode${r.modes > 1 ? "s" : ""} joué${r.modes > 1 ? "s" : ""}${r.is_me ? " · toi" : ""}`;
+        ol.appendChild(boardRow(r.rank, r.name, small, r.total, r.is_me, k, () => openProfile(r)));
         last = r.rank;
       });
     } catch (e) {
       if (req !== boardReq) return;
       ol.innerHTML = "";
       ol.appendChild(emptyRow(e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne." : `Classement indisponible : ${e.message}`));
+    }
+  }
+
+  // Player profile: overall rank and total, then the best score of the season in each mode.
+  let profReq = 0;
+  async function openProfile(row) {
+    const req = ++profReq;
+    $("#prof-name").textContent = row.name;
+    $("#prof-rank").textContent = `${ordinal(row.rank)} au classement mondial`;
+    $("#prof-total").textContent = row.total;
+    $("#prof-sub").textContent = "points au total cette saison";
+    const ul = $("#prof-modes"); ul.innerHTML = "";
+    ul.appendChild(emptyRow("Chargement…"));
+    show("profile");
+    try {
+      const rows = (await NT.online.profile(row.name, boardSeason)) || [];
+      if (req !== profReq || current !== "profile") return;
+      ul.innerHTML = "";
+      const byMode = Object.fromEntries(rows.map((r) => [r.mode, r]));
+      // Played modes first (best score first), then the others.
+      const ids = [...rows.map((r) => r.mode), ...NT.online.GLOBAL_MODES.filter((id) => !byMode[id])];
+      ids.forEach((id, k) => {
+        if (!MODES[id]) return;
+        const r = byMode[id], li = document.createElement("li");
+        li.className = "prof-mode" + (r ? "" : " none"); li.dataset.frame = "sm";
+        li.innerHTML = `<span class="pm-name"></span><span class="pm-info"></span><b class="num pm-score"></b>`;
+        li.querySelector(".pm-name").textContent = MODES[id].name;
+        li.querySelector(".pm-info").textContent = r ? `${ordinal(r.rank)} · niveau ${r.level} · ${r.bpm} BPM` : "Pas encore joué";
+        li.querySelector(".pm-score").textContent = r ? r.score : "—";
+        if (!reduceMotion) li.style.animation = `boot .4s ${Math.min(k, 8) * 40}ms both`;
+        ul.appendChild(li);
+      });
+      fx.initFrames(ul);
+    } catch (e) {
+      if (req !== profReq) return;
+      ul.innerHTML = "";
+      ul.appendChild(emptyRow(e.offline ? "Pas de connexion." : `Profil indisponible : ${e.message}`));
     }
   }
 
@@ -1471,11 +1522,13 @@
     try {
       const info = await NT.online.eventInfo(), p = $("#rank-pill");
       if (!info) return;
-      p.hidden = false;
-      p.textContent = !info.threshold_at ? `${info.players}/${info.players_needed}` : info.season === 0 ? "Bientôt" : `Saison ${info.season}`;
+      // No player counter: the pill only appears once the event is announced.
+      p.hidden = !info.threshold_at;
+      p.textContent = info.season === 0 ? "Bientôt" : `Saison ${info.season}`;
     } catch {}
   }
   if (NT.online.enabled) setTimeout(() => NT.online.flush(S.name), 3000);
+  setTimeout(() => $("#splash")?.remove(), 1000); // startup animation is over
 
   // ---------- boot ----------
   applyLook();

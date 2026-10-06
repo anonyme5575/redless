@@ -316,3 +316,46 @@ revoke all on function public.save_progress(jsonb) from public, anon;
 revoke all on function public.load_progress() from public, anon;
 grant execute on function public.save_progress(jsonb) to authenticated;
 grant execute on function public.load_progress() to authenticated;
+
+-- =====================================================================
+-- Classement général : une ligne par joueur, total de ses meilleurs scores
+-- de la saison dans tous les modes. La fiche d'un joueur détaille ses
+-- meilleurs scores mode par mode (Classique, Chrono, Mort subite…).
+-- =====================================================================
+create or replace function public.get_overall(p_season int default null, p_limit int default 100)
+returns table (rank bigint, name text, total int, modes int, is_me boolean)
+language sql stable security definer set search_path = public as $$
+  with s as (select coalesce(p_season, (select e.season from event_info() e)) as season),
+  per as (
+    select b.player_id, sum(b.score)::int as total, count(*)::int as modes, max(b.updated_at) as last_at
+    from public.best_scores b, s
+    where b.season = s.season
+    group by b.player_id
+  ),
+  ranked as (
+    select rank() over (order by per.total desc, per.last_at asc) as rank,
+           p.name, per.total, per.modes, (per.player_id = auth.uid()) as is_me
+    from per join public.players p on p.id = per.player_id
+  )
+  select * from ranked where rank <= least(greatest(coalesce(p_limit, 100), 1), 200) or is_me
+  order by rank
+$$;
+
+create or replace function public.get_profile(p_name text, p_season int default null)
+returns table (mode text, score int, level int, bpm int, rank bigint, updated_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  with s as (select coalesce(p_season, (select e.season from event_info() e)) as season),
+  ranked as (
+    select b.player_id, b.mode, b.score, b.level, b.bpm, b.updated_at,
+           rank() over (partition by b.mode order by b.score desc, b.updated_at asc) as rank
+    from public.best_scores b, s
+    where b.season = s.season
+  )
+  select r.mode, r.score, r.level, r.bpm, r.rank, r.updated_at
+  from ranked r join public.players p on p.id = r.player_id
+  where lower(p.name) = lower(btrim(p_name))
+  order by r.score desc
+$$;
+
+grant execute on function public.get_overall(int, int) to anon, authenticated;
+grant execute on function public.get_profile(text, int) to anon, authenticated;
