@@ -29,7 +29,7 @@ Chaque nouvelle version envoyée doit avoir un `VERSION_CODE` plus grand.
 1. Créer un compte développeur (25 $ une fois) et une application « Redless », langue par défaut français, type Jeu, gratuit.
 2. **Fiche du Store** : textes dans `store/fr-FR/`, icône `store/icon-512.png`, bannière `store/feature-graphic.png`, captures `store/screenshots/` (6 × 1080×1920).
 3. **Règles de confidentialité** : URL de `PRIVACY.md` sur GitHub (dépôt public) ou toute page web qui en reprend le texte.
-4. **Sécurité des données** : données collectées = **Informations personnelles → Adresse e-mail** (connexion au classement, obligatoire pour publier un score), **Identifiants de l'appareil ou autres** (ID de compte, ID d'installation anonyme), **Activité dans l'appli** (scores, parties), **Autres infos** (pseudo). Usage : fonctionnalités de l'appli. Non partagées, chiffrées en transit (HTTPS), suppression sur demande.
+4. **Sécurité des données** : données collectées = **Informations personnelles → Adresse e-mail** (compte du classement, obligatoire pour publier un score), **Identifiants de l'appareil ou autres** (ID de compte, ID d'installation anonyme), **Activité dans l'appli** (scores, parties), **Autres infos** (pseudo). Usage : fonctionnalités de l'appli. Non partagées, chiffrées en transit (HTTPS). **Suppression du compte** : oui, dans l'appli (Réglages → Compte → Supprimer mon compte) ; lien web à fournir = la page de confidentialité (section Suppression).
 5. **Classification du contenu** : questionnaire, jeu sans violence ni achat ni interaction entre joueurs → PEGI 3 attendu.
 6. **Public cible** : 13 ans et plus (en dessous, le programme Familles impose des contraintes supplémentaires).
 7. **Publicités** : non.

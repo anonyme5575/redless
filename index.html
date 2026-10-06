@@ -135,7 +135,7 @@
     </div>
     <ul class="done-list" id="over-missions" hidden></ul>
     <p class="over-online" id="over-online" hidden></p>
-    <button class="btn" id="btn-over-login" data-frame="sm" hidden>Se connecter pour être classé</button>
+    <button class="btn" id="btn-over-login" data-frame="sm" hidden>Se connecter / s'inscrire</button>
     <form class="name-row" id="name-form">
       <input id="name-input" maxlength="14" placeholder="Ton pseudo (2 à 14 caractères)" autocomplete="nickname" aria-label="Pseudo pour le classement">
       <button class="btn" type="submit" data-frame="sm">Enregistrer</button>
@@ -180,7 +180,7 @@
       <span class="xpbar"><i id="event-bar"></i></span>
       <span class="event-sub" id="event-sub"></span>
     </div>
-    <button class="login-strip" id="btn-rank-login" hidden>Connecte-toi avec ton e-mail pour entrer au classement mondial →</button>
+    <button class="login-strip" id="btn-rank-login" hidden>Connecte-toi ou inscris-toi pour entrer au classement mondial →</button>
     <div class="tabs" role="tablist" id="rank-tabs"></div>
     <ol class="board-list" id="board-list"></ol>
     <p class="note" id="rank-note">Classement enregistré sur cet appareil</p>
@@ -286,31 +286,44 @@
     <p class="tuto-feedback" id="tuto-feedback"></p>
   </section>
 
-  <!-- ACCOUNT (e-mail + one-time code) -->
+  <!-- ACCOUNT (e-mail + password, address confirmed by code) -->
   <section class="screen scroll" id="account" hidden>
     <div class="topbar">
       <button class="icon-btn back" aria-label="Retour"></button>
       <h2>Compte</h2>
       <span class="spacer"></span>
     </div>
-    <form class="account-card" id="acc-email-form" data-frame="sm">
-      <span class="label">Connexion ou inscription</span>
-      <p class="intro">Entre ton adresse e-mail : tu reçois un code à 6 chiffres. Pas de mot de passe. Si c'est ta première fois, ton compte est créé et un e-mail de bienvenue t'est envoyé.</p>
+    <div class="seg acc-tabs" id="acc-tabs">
+      <button type="button" data-tab="login" aria-pressed="true">Connexion</button>
+      <button type="button" data-tab="signup" aria-pressed="false">Inscription</button>
+    </div>
+    <form class="account-card" id="acc-auth-form" data-frame="sm" novalidate>
+      <span class="label" id="acc-auth-title">Connexion</span>
+      <p class="intro" id="acc-auth-intro"></p>
       <input id="acc-email" type="email" inputmode="email" autocomplete="email" placeholder="ton@adresse.fr" aria-label="Adresse e-mail">
-      <button class="btn btn-go" type="submit" id="acc-send">Recevoir le code</button>
+      <div class="pw-row">
+        <input id="acc-password" type="password" autocomplete="current-password" placeholder="Mot de passe" aria-label="Mot de passe">
+        <button type="button" class="pw-eye" id="acc-eye" aria-pressed="false">Voir</button>
+      </div>
+      <input id="acc-password2" type="password" autocomplete="new-password" placeholder="Confirme le mot de passe" aria-label="Confirmation du mot de passe" hidden>
+      <button class="btn btn-go" type="submit" id="acc-submit">Se connecter</button>
+      <button class="link-btn" type="button" id="acc-forgot">Mot de passe oublié ?</button>
     </form>
-    <form class="account-card" id="acc-code-form" data-frame="sm" hidden>
-      <span class="label">Code reçu par e-mail</span>
+    <form class="account-card" id="acc-code-form" data-frame="sm" novalidate hidden>
+      <span class="label" id="acc-code-title">Code reçu par e-mail</span>
       <p class="intro" id="acc-code-hint"></p>
       <input id="acc-code" class="code-input num" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000" aria-label="Code à 6 chiffres">
-      <button class="btn btn-go" type="submit" id="acc-verify">Se connecter</button>
-      <button class="btn" type="button" id="acc-change" data-frame="sm">Changer d'adresse</button>
+      <input id="acc-newpw" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (8 caractères min.)" aria-label="Nouveau mot de passe" hidden>
+      <button class="btn btn-go" type="submit" id="acc-verify">Valider</button>
+      <button class="link-btn" type="button" id="acc-resend">Renvoyer le code</button>
+      <button class="btn" type="button" id="acc-change" data-frame="sm">Retour</button>
     </form>
     <div class="account-card" id="acc-signed" data-frame="sm" hidden>
       <span class="label">Connecté</span>
       <b class="acc-email" id="acc-email-shown"></b>
       <p class="intro">Tes scores partent au classement mondial sous ton pseudo. Ton adresse n'est jamais affichée.</p>
       <button class="btn" type="button" id="acc-logout" data-frame="sm">Se déconnecter</button>
+      <button class="link-btn danger" type="button" id="acc-delete">Supprimer mon compte</button>
     </div>
     <p class="acc-msg" id="acc-msg"></p>
   </section>
@@ -323,14 +336,14 @@
       <span class="spacer"></span>
     </div>
     <div class="prose">
-      <p><b>Redless ne collecte ni nom, ni e-mail, ni contact, ni position.</b></p>
+      <p><b>Sans compte, Redless ne collecte ni nom, ni e-mail, ni contact, ni position.</b></p>
       <p>Ta progression (crédits, records, réglages) reste sur ton appareil.</p>
-      <p><b>Compte et classement mondial.</b> Pour être classé, tu te connectes avec ton <b>adresse e-mail</b> (un code t'est envoyé, pas de mot de passe). Le serveur du jeu (Supabase) conserve : ton adresse e-mail, ton pseudo, tes scores, ton niveau, ton tempo et la durée de tes parties. L'adresse sert uniquement à te connecter et à t'envoyer les codes ; elle n'est jamais affichée ni partagée, et aucune publicité ne t'est envoyée. Seul ton pseudo est visible des autres joueurs.</p>
+      <p><b>Compte et classement mondial.</b> Pour être classé, tu crées un compte avec ton <b>adresse e-mail</b> et un <b>mot de passe</b> (enregistré sous forme hachée, illisible même pour le créateur du jeu). Le serveur du jeu (Supabase) conserve : ton adresse e-mail, ton pseudo, tes scores, ton niveau, ton tempo et la durée de tes parties. L'adresse sert uniquement à te connecter, à t'envoyer l'e-mail de bienvenue et, si tu le demandes, un code pour changer de mot de passe ; elle n'est jamais affichée ni partagée, et aucune publicité ne t'est envoyée. Seul ton pseudo est visible des autres joueurs.</p>
       <p><b>Installation.</b> Au premier lancement de l'application installée, le jeu envoie une seule fois un signal anonyme : un identifiant aléatoire, la plateforme (Android, iPhone, web) et la version. Il sert uniquement à compter les installations.</p>
       <p>Pas de publicité, pas d'outil de mesure d'audience. Le jeu fonctionne sans connexion ; les scores sont envoyés au retour du réseau.</p>
       <p>Permission utilisée : <b>vibreur</b>, pour les retours haptiques. Elle se coupe dans les réglages.</p>
       <p>Quand tu partages ton score, l'image est créée sur ton appareil et envoyée seulement à l'application que tu choisis. Sur Android 10 et plus, une copie est rangée dans Images/Redless.</p>
-      <p>Désinstaller le jeu ou « Effacer la progression » supprime les données de l'appareil. Pour faire supprimer tes scores du classement mondial, ouvre une demande sur github.com/anonyme5575/redless en indiquant ton pseudo.</p>
+      <p>Désinstaller le jeu ou « Effacer la progression » supprime les données de l'appareil. Pour effacer ton compte, ton adresse e-mail et tes scores du classement mondial : Réglages → Compte → Gérer → Supprimer mon compte.</p>
     </div>
   </section>
 

@@ -189,6 +189,16 @@ exception
   when check_violation then raise exception 'pseudo invalide (2 à 14 lettres, chiffres, espace, . _ -)';
 end $$;
 
+-- ---------- suppression du compte (exigée par Google Play) ----------
+-- Efface le compte de l'appelant : pseudo, scores et parties partent en cascade.
+create or replace function public.delete_my_account()
+returns void language plpgsql volatile security definer set search_path = public, auth as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'non connecté' using errcode = '28000'; end if;
+  delete from auth.users where id = uid;
+end $$;
+
 -- ---------- classement ----------
 -- Top p_limit de la saison demandée (par défaut la saison en cours), plus la ligne du joueur
 -- qui appelle s'il est plus bas.
@@ -215,6 +225,8 @@ grant execute on function public.event_info() to anon, authenticated;
 grant execute on function public.get_leaderboard(text, int, int) to anon, authenticated;
 grant execute on function public.submit_score(text, int, int, int, int, text) to authenticated;
 grant execute on function public.set_name(text) to authenticated;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
 grant execute on function public.redless_settings() to anon, authenticated;
 
 -- =====================================================================

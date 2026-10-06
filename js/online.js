@@ -1,5 +1,5 @@
 // Global leaderboard on Supabase, over plain HTTP (no library, works offline-first).
-// Players sign in with their e-mail and a one-time code (no password); scores go through the
+// Players sign up with their e-mail and a password (address confirmed by an e-mailed code); scores go through the
 // submit_score() function on the server, which checks them. Failed sends wait in a local queue.
 (() => {
   "use strict";
@@ -55,30 +55,68 @@
     throw needLogin();
   }
 
-  // ---- e-mail sign-in: one form for sign-up and log-in ----
-  // 1. sendCode: Supabase e-mails a code (new address = account created + welcome e-mail).
-  // 2. verifyCode: the code opens the session.
+  // ---- account: e-mail + password ----
+  // signUp creates the account; Supabase sends the welcome e-mail with a code that confirms the
+  // address (verifyCode). signIn opens the session. resetPassword e-mails a code; newPassword
+  // checks it and sets the new password.
   const cleanEmail = (e) => String(e || "").trim().toLowerCase();
-  async function sendCode(email) {
+  function checkEmail(email) {
     if (!enabled) throw new Error("classement non configuré");
     const em = cleanEmail(email);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) throw new Error("adresse e-mail invalide");
-    await http("/auth/v1/otp", { email: em, create_user: true });
     return em;
+  }
+  function checkPassword(pw) {
+    if (String(pw || "").length < 8) throw new Error("mot de passe trop court (8 caractères minimum)");
+    return String(pw);
+  }
+  function opened(s, email) { session = { email }; keep(s); if (!session) throw new Error("connexion refusée"); return session.email; }
+  // Returns {email, confirm:true} when the address still has to be confirmed by code.
+  async function signUp(email, password) {
+    const em = checkEmail(email), pw = checkPassword(password);
+    const r = await http("/auth/v1/signup", { email: em, password: pw });
+    if (r && r.access_token) return { email: opened(r, em) };
+    // Address already registered: Supabase answers with a user that has no identity, and sends nothing.
+    const u = (r && r.user) || r;
+    if (u && Array.isArray(u.identities) && u.identities.length === 0) { const e = new Error("adresse déjà inscrite"); e.exists = true; throw e; }
+    return { email: em, confirm: true };
+  }
+  async function signIn(email, password) {
+    const em = checkEmail(email);
+    try { return { email: opened(await http("/auth/v1/token?grant_type=password", { email: em, password: String(password || "") }), em) }; }
+    catch (e) {
+      // Account created but address not confirmed yet: send a fresh code.
+      if (/not confirmed/i.test(e.message)) { await http("/auth/v1/resend", { type: "signup", email: em }).catch(() => {}); return { email: em, confirm: true }; }
+      if (/invalid login|invalid_credentials/i.test(e.message)) throw new Error("e-mail ou mot de passe incorrect");
+      throw e;
+    }
   }
   async function verifyCode(email, code) {
     const c = String(code || "").replace(/\D/g, "");
     if (c.length < 6) throw new Error("le code fait 6 chiffres");
-    const s = await http("/auth/v1/verify", { type: "email", email: cleanEmail(email), token: c });
-    session = { email: cleanEmail(email) };
-    keep(s);
-    if (!session) throw new Error("connexion refusée");
-    return session.email;
+    const em = cleanEmail(email);
+    return opened(await http("/auth/v1/verify", { type: "email", email: em, token: c }), em);
+  }
+  async function resendCode(email) { await http("/auth/v1/resend", { type: "signup", email: checkEmail(email) }); }
+  async function resetPassword(email) { const em = checkEmail(email); await http("/auth/v1/recover", { email: em }); return em; }
+  async function newPassword(email, code, password) {
+    const pw = checkPassword(password), c = String(code || "").replace(/\D/g, "");
+    if (c.length < 6) throw new Error("le code fait 6 chiffres");
+    const em = cleanEmail(email);
+    const s = await http("/auth/v1/verify", { type: "recovery", email: em, token: c });
+    await http("/auth/v1/user", { password: pw }, s.access_token, "PUT");
+    return opened(s, em);
   }
   function logout() {
     const tk = session && session.access_token;
     session = null; write(AUTH, null);
     if (tk) http("/auth/v1/logout", {}, tk).catch(() => {});
+  }
+  // Deletes the account on the server (pseudo, scores and runs go with it), then signs out.
+  async function deleteAccount() {
+    await rpc("delete_my_account", {}, true);
+    write(QUEUE, []);
+    session = null; write(AUTH, null);
   }
   const account = () => (session && session.email ? { email: session.email } : null);
   async function rpc(name, params, needAuth) {
@@ -142,5 +180,5 @@
 
   window.addEventListener("online", () => flush());
   NT.online = { enabled, GLOBAL_MODES, submit, flush, leaderboard, eventInfo, rename, registerInstall,
-    sendCode, verifyCode, logout, account, pending: () => read(QUEUE, []).length };
+    signUp, signIn, verifyCode, resendCode, resetPassword, newPassword, logout, deleteAccount, account, pending: () => read(QUEUE, []).length };
 })();

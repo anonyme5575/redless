@@ -44,7 +44,7 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 
 ## Classement mondial et événement
 
-Via Supabase (offre gratuite) : connexion par e-mail (code à 6 chiffres, e-mail de bienvenue à l'inscription), un pseudo, des scores contrôlés côté serveur.
+Via Supabase (offre gratuite) : compte e-mail + mot de passe (e-mail de bienvenue à l'inscription, mot de passe oublié, suppression du compte), un pseudo, des scores contrôlés côté serveur.
 L'**événement** démarre **7 jours après le 30e joueur**, puis le classement **repart de zéro chaque mois** (saison 1, 2, 3…). Épreuve officielle : mode Classique ; chaque mode a son classement mensuel. Avant l'événement : pré-saison.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 

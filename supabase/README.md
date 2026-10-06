@@ -16,12 +16,17 @@ Supabase → **New project** :
 
 Le script peut être relancé sans risque.
 
-## 3. Connexion des joueurs par e-mail
-Le joueur saisit son adresse, reçoit un **code à 6 chiffres** par e-mail et le tape dans le jeu. Pas de mot de passe. La première fois, le message est un e-mail de bienvenue (inscription) ; ensuite, un simple code de connexion. Un compte anonyme ne peut plus publier de score (refusé par `submit_score`).
+## 3. Comptes joueurs : e-mail + mot de passe
+- **Inscription** : le joueur choisit son adresse et un mot de passe (8 caractères minimum). Il reçoit un **e-mail de bienvenue** avec un code à 6 chiffres qui confirme son adresse.
+- **Connexion** : adresse + mot de passe.
+- **Mot de passe oublié** : un code par e-mail, puis le joueur choisit un nouveau mot de passe dans le jeu.
+- **Supprimer mon compte** (dans le jeu, exigé par Google Play) : efface le compte, le pseudo et les scores.
+- Un compte anonyme ne peut plus publier de score (refusé par `submit_score`).
 
 **a. Fournisseur**
 **Authentication → Sign In / Providers** :
 - **Email** : activé, **Confirm email** activé ;
+- **Minimum password length** : `8` ;
 - **Allow anonymous sign-ins** : **désactivé**.
 
 **b. Envoi des e-mails via Gmail (obligatoire)**
@@ -43,10 +48,10 @@ Le serveur d'e-mails intégré de Supabase n'envoie qu'aux membres de l'équipe 
 
 **c. Textes des e-mails**
 **Authentication → Emails → Templates** :
-- **Confirm signup** : sujet `Bienvenue dans Redless — ton code`, corps = contenu de [`email-templates/confirm-signup.html`](email-templates/confirm-signup.html) ;
-- **Magic Link** : sujet `Ton code Redless`, corps = contenu de [`email-templates/magic-link.html`](email-templates/magic-link.html).
+- **Confirm signup** : sujet `Bienvenue dans Redless — confirme ton adresse`, corps = contenu de [`email-templates/confirm-signup.html`](email-templates/confirm-signup.html) ;
+- **Reset Password** : sujet `Redless — nouveau mot de passe`, corps = contenu de [`email-templates/reset-password.html`](email-templates/reset-password.html).
 
-Les deux contiennent `{{ .Token }}` : c'est le code. Sans lui, le joueur reçoit un lien au lieu d'un code et ne peut pas se connecter dans l'application.
+Les deux contiennent `{{ .Token }}` : c'est le code. Avec le modèle par défaut, le joueur reçoit un lien au lieu d'un code et reste bloqué dans l'application.
 
 **d. Limites d'envoi**
 **Authentication → Rate Limits** → **Rate limit for sending emails** : passe à `100` par heure (modifiable seulement après l'étape b).

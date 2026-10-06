@@ -595,3 +595,12 @@ html, body { touch-action: manipulation; }
 .acc-msg { margin: 0; min-height: 20px; font-size: 14px; color: var(--holo); text-align: center; line-height: 1.4; }
 .acc-msg.bad { color: var(--warn); }
 .login-strip { background: var(--holo-dim); border: 0; border-left: 2px solid var(--gold); color: var(--ink); text-align: left; padding: 10px 12px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.account-card input[type="password"], .account-card input[type="text"] { font: inherit; font-weight: 700; color: var(--ink); background: var(--panel); border: 1px solid var(--holo); padding: 12px 14px; user-select: text; -webkit-user-select: text; min-width: 0; width: 100%; }
+.pw-row { display: flex; gap: 6px; }
+.pw-row input { flex: 1; }
+.pw-eye { flex: none; border: 1px solid var(--holo-dim); background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 0 12px; cursor: pointer; }
+.link-btn { justify-self: center; border: 0; background: none; color: var(--holo); font: inherit; font-size: 13.5px; text-decoration: underline; cursor: pointer; padding: 4px; }
+.link-btn:disabled { opacity: .5; }
+.acc-tabs { justify-content: center; }
+.acc-tabs button { flex: 1; padding: 10px; font-size: 13px; }
+.link-btn.danger { color: var(--warn); }
