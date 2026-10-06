@@ -383,7 +383,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .board-list li { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 10px 14px; background: var(--panel); border-left: 2px solid var(--holo-dim); }
 .board-list li.me { border-left-color: var(--green); }
 .board-list .rank { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--muted); }
-.board-list li:first-child .rank { color: var(--gold); text-shadow: 0 0 8px var(--gold); }
 .board-list .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; letter-spacing: .04em; }
 .board-list .who small { display: block; color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: .08em; }
 .board-list .pts { font-family: var(--font-display); font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -506,7 +505,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .m-prog { grid-column: 1 / -1; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .mission.done .m-prog { color: var(--green); }
 .mission.done .frame-svg .line { stroke: var(--green); }
-.rank-card { display: grid; gap: 6px; padding: 14px; margin-top: auto; }
+.rank-card { display: grid; gap: 6px; padding: 14px; margin-top: 6px; }
 .rank-big { font-family: var(--font-display); font-size: 32px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); text-shadow: 0 0 12px var(--gold); }
 
 /* duel */
@@ -656,3 +655,38 @@ html, body { touch-action: manipulation; }
 .update-bar { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--green); box-shadow: 0 0 16px color-mix(in srgb, var(--green) 40%, transparent); backdrop-filter: blur(6px); }
 .update-bar span { flex: 1; font-size: 13.5px; line-height: 1.3; }
 .update-bar b { color: var(--green); }
+
+/* ---------- interface polish ---------- */
+/* button icons (home) */
+.bi { width: 15px; height: 15px; margin-right: 7px; vertical-align: -2px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+/* press feedback on every tappable card */
+.mode, .mode-pick, .item, .daily, .board-list li.open, .rank-badge { transition: transform .12s ease, filter .12s ease; }
+.mode:active, .mode-pick:active, .item:active, .daily:active, .rank-badge:active { transform: scale(.97); filter: brightness(1.25); }
+.board-list li.open:active { transform: scale(.985); }
+.btn { transition: transform .12s ease, background .12s ease, filter .12s ease; }
+/* settings sections */
+.set-title { margin: 6px 2px -4px; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--holo); opacity: .85; }
+.set-row > span:first-child { min-width: 0; }
+/* game over: centred hero score */
+.over-head { text-align: center; }
+.over-head .over-sub { margin-inline: auto; }
+#over .over-score-row { flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+#over .over-score-row .label { display: block; }
+#over .over-score { font-size: 104px; }
+#over .over-side { justify-items: center; text-align: center; padding-bottom: 0; }
+.over-online:not([hidden]) { padding: 10px 12px; background: var(--panel); border-left: 2px solid currentColor; }
+/* world podium */
+.board-list li.top1 { border-left-color: var(--gold); background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 16%, transparent), var(--panel) 60%); }
+.board-list li.top2 { border-left-color: #d7dee8; background: linear-gradient(90deg, rgba(215,222,232,.12), var(--panel) 60%); }
+.board-list li.top3 { border-left-color: #e09a5c; background: linear-gradient(90deg, rgba(224,154,92,.13), var(--panel) 60%); }
+.board-list li.top1 .rank { color: var(--gold); text-shadow: 0 0 8px var(--gold); }
+.board-list li.top2 .rank { color: #d7dee8; text-shadow: 0 0 8px rgba(215,222,232,.7); }
+.board-list li.top3 .rank { color: #e09a5c; text-shadow: 0 0 8px rgba(224,154,92,.7); }
+.board-list li.me .who { color: var(--green); }
+@media (prefers-reduced-motion: reduce) { .mode:active, .mode-pick:active, .item:active, .daily:active, .rank-badge:active, .board-list li.open:active { transform: none; } }
+.menu-actions .btn:not(.btn-go) { display: flex; align-items: center; justify-content: center; white-space: nowrap; padding-inline: 8px; }
+/* home: demo board one third smaller, the rest of the menu stays centred */
+#menu .menu-top { margin-bottom: auto; }
+#menu .menu-actions { margin-bottom: auto; }
+#menu .menu-hero { max-height: 240px; }
+#menu .demo { max-height: 100px; }

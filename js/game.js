@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.9";
+  const VERSION = "3.0";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -983,6 +983,7 @@
   function boardRow(rank, name, small, score, me, k, onOpen) {
     const li = document.createElement("li");
     if (me) li.className = "me";
+    if (rank <= 3) li.classList.add("top" + rank); // podium colours
     if (onOpen) {
       li.classList.add("open"); li.tabIndex = 0; li.setAttribute("role", "button");
       li.onclick = onOpen;
