@@ -953,6 +953,8 @@
     $("#set-music").value = Math.round(S.musicVol * 100);
     $("#set-sfx").value = Math.round(S.sfxVol * 100);
     $("#set-vibe").setAttribute("aria-pressed", S.vibration);
+    const noVibe = NT.isIOS && !NT.native();
+    $("#set-vibe").disabled = noVibe; $("#vibe-hint").hidden = !noVibe;
     $("#set-cb").setAttribute("aria-pressed", S.colorblind);
     $("#set-latency").textContent = S.calibrated ? `${Math.round(S.latency * 1000)} ms compensés` : "Non calibré";
     $("#app-version").textContent = VERSION;
@@ -1197,6 +1199,33 @@
     show(BACK_TO[current] || "menu"); return true;
   };
   window.__debug = () => ({ music: Music.playing, rate: Music.el && Music.el.playbackRate, bpm: G && G.bpm, bpmNow: G && G.bpmNow, cells: cells.length, tiles: G && [...G.tiles.values()].map((t) => t.kind), level: G && G.level, target: G && G.target, boss: !!(G && G.boss), score: G && G.score, spawned: G && G.spawnLog.join(",") });
+
+  // ---------- iPhone & installable web app ----------
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  NT.isIOS = isIOS;
+  // Long-press (black tiles) must not open the iOS callout or the context menu; no pinch-zoom mid-game.
+  app.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  // Let the game sound play even with the iPhone's silent switch on (Safari 16.4+).
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+  // Offline cache once installed. Refused inside previews and sandboxes: that is fine.
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !NT.native()) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+  let installPrompt = null;
+  function installDismissed() { try { return localStorage.getItem("redless-install-hidden") === "1"; } catch { return false; } }
+  function showInstall(html, withButton) {
+    if (standalone || NT.native() || installDismissed()) return;
+    $("#install-text").innerHTML = html;
+    $("#btn-install").hidden = !withButton;
+    $("#install").hidden = false;
+    fx.initFrames($("#install"));
+  }
+  if (isIOS && !standalone) showInstall("Installe Redless : <b>Partager</b> puis <b>Sur l'écran d'accueil</b>. Il marchera en plein écran et hors ligne.", false);
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; showInstall("Installe Redless sur ton téléphone : plein écran et hors ligne.", true); });
+  $("#btn-install").onclick = async () => { if (!installPrompt) return; installPrompt.prompt(); try { await installPrompt.userChoice; } catch {} installPrompt = null; $("#install").hidden = true; };
+  $("#btn-install-close").onclick = () => { $("#install").hidden = true; try { localStorage.setItem("redless-install-hidden", "1"); } catch {} };
 
   // ---------- boot ----------
   applyLook();

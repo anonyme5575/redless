@@ -9,7 +9,8 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 ## Jouer
 
 - **Android** : installer `dist/redless.apk` (ou l'artefact du workflow « APK » dans l'onglet Actions).
-- **Navigateur** : `python3 -m http.server 8000` puis http://localhost:8000.
+- **iPhone / iPad** : ouvrir le site (déployé sur Vercel) dans **Safari**, puis **Partager → Sur l'écran d'accueil**. Redless s'installe comme une appli : plein écran, icône, fonctionne hors ligne (`sw.js`), le son joue même en mode silencieux (iOS 16.4+). Seule limite : Safari ne donne pas accès au vibreur.
+- **Navigateur** : `python3 -m http.server 8000` puis http://localhost:8000. Sur Android, Chrome propose aussi « Installer ».
 
 ## Règles
 

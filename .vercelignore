@@ -1,0 +1,5 @@
+android
+store
+dist/*.aab
+*.md
+!PRIVACY.md

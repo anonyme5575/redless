@@ -80,7 +80,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .screen {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  padding: 14px 16px 18px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
   gap: 12px;
 }
 .screen.enter > * { animation: boot .5s cubic-bezier(.2,.8,.2,1) both; }
@@ -178,7 +178,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .menu-actions .btn-go { grid-column: 1 / -1; }
 
 /* ---------- play ---------- */
-#play { gap: 6px; padding-block: 10px 12px; }
+#play { gap: 6px; padding-top: calc(10px + env(safe-area-inset-top, 0px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 .hud { display: grid; grid-template-columns: 50px 1fr 50px; align-items: center; gap: 8px; height: 88px; }
 .gauge { position: relative; height: 100%; display: grid; justify-items: center; }
 .gauge svg { width: 30px; height: 62px; overflow: visible; }
@@ -563,3 +563,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
   .tactical { font-size: 10.5px; line-height: 1.15; }
   .tactical dt { font-size: 12px; margin-bottom: 0; }
 }
+
+/* iPhone & installable web app */
+html, body { touch-action: manipulation; }
+#app { -webkit-touch-callout: none; -webkit-user-select: none; }
+.install { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.35; color: var(--ink); background: var(--holo-dim); border-left: 2px solid var(--holo); }
+.install span { flex: 1; min-width: 0; }
+.install b { color: var(--holo); }
+.icon-btn.small-x { width: 28px; height: 28px; font-size: 20px; line-height: 1; flex: none; }
+.toggle:disabled { opacity: .35; cursor: not-allowed; }

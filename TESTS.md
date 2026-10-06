@@ -25,6 +25,16 @@ Prévoir 3 à 4 testeurs, 10 minutes chacun, si possible sur des téléphones di
 | 12 | Partager : le menu de partage Android s'ouvre avec l'image | | |
 | 13 | Rien ne rame (pluie, particules) sur le téléphone le plus lent | | |
 
+## iPhone (version web installée)
+| # | Vérifier | OK ? | Remarque |
+|---|---|---|---|
+| 14 | Safari → Partager → « Sur l'écran d'accueil » : l'icône Redless apparaît | | |
+| 15 | L'appli s'ouvre en plein écran, rien n'est caché par l'encoche ni la barre du bas | | |
+| 16 | La musique démarre, y compris interrupteur silencieux activé | | |
+| 17 | Case noire : garder le doigt appuyé n'ouvre aucun menu ni loupe | | |
+| 18 | Mode avion : l'appli s'ouvre et se joue (après une première partie en ligne) | | |
+| 19 | Partager : la feuille de partage iOS s'ouvre avec l'image | | |
+
 ## Après le test, demander
 - Qu'est-ce qui t'a paru injuste ?
 - À quel moment as-tu eu envie d'arrêter ?
