@@ -39,6 +39,10 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 
 **200 niveaux** en 20 mondes de 10 (`js/levels.js`), chacun avec **son propre thème de couleurs**, un mode, une difficulté qui monte, et **3 quêtes** : la première (score) réussit le niveau et ouvre le suivant, les deux autres sont des bonus. Chaque quête rapporte des crédits la première fois ; les 3 quêtes débloquent le thème du niveau dans la boutique (onglet Niveaux).
 
+## Musiques
+
+4 musiques d'origine (« Sync or Die », « Synthé », « Every Scar A Shield », « The Velvet Hour ») et **17 musiques libres CC0** d'OpenGameArt, à acheter dans la boutique (onglet Musique). Auteurs et sources : [`audio/CREDITS.md`](audio/CREDITS.md). La musique choisie joue partout (menus et parties) ; dans les Réglages, une liste déroulante.
+
 ## Difficulté
 
 Dans **Modes de jeu** : Facile, Normal, Difficile, Hardcore, Impossible (tempo, fintes, durée des cases, vies, crédits ×0,5 à ×3). Facile n'est pas classé au mondial ; le Défi du jour et le Duel restent en Normal.

@@ -740,3 +740,24 @@ html, body { touch-action: manipulation; }
 .diff-seg button[data-diff="hardcore"][aria-pressed="true"] { border-color: var(--warn); color: var(--warn); }
 .diff-seg button[data-diff="impossible"][aria-pressed="true"] { border-color: var(--red); color: var(--red); }
 .diff-note { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- tidy menus ---------- */
+/* home: Jouer, Niveaux, then one row of three */
+#menu .menu-actions { grid-template-columns: repeat(3, 1fr); }
+#menu .menu-actions .btn-go, #menu .menu-actions .btn-levels { grid-column: 1 / -1; }
+#menu .menu-actions .btn:not(.btn-go):not(.btn-levels) { font-size: 12px; padding-inline: 4px; letter-spacing: .06em; }
+#menu .menu-actions .pill { margin-left: 4px; }
+#daily-pill { margin: 0 8px 0 0; vertical-align: 1px; }
+/* modes page: duel card in the theme colour */
+.duel-card .label { color: var(--holo); }
+.duel-card .frame-svg .line, .duel-card .frame-svg .tick { stroke: var(--holo); }
+#modes-screen .daily { width: 100%; }
+/* shop: every tab visible on two rows, compact cards */
+#shop-tabs { display: grid; grid-template-columns: repeat(3, 1fr); overflow: visible; gap: 0 2px; flex: none; }
+#shop-tabs .tab { padding: 9px 4px; }
+.shop-list .item { padding: 10px; gap: 5px; }
+.shop-list .preview { height: 44px; padding: 6px; }
+.shop-list .preview-shape span { width: 32px; height: 32px; }
+.shop-list .item .name { font-size: 13.5px; }
+.set-select { max-width: 55%; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--panel); border: 1px solid var(--holo); padding: 7px 8px; }
+.set-select option { background: var(--bg); color: var(--ink); }

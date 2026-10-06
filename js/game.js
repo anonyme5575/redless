@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.3";
+  const VERSION = "3.4";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -864,7 +864,7 @@
   $("#btn-play").onclick = () => startGame(S.mode);
   $("#btn-again").onclick = () => startGame(lastStart.modeId, { ...lastStart.opts, skipTuto: true });
   $("#btn-daily").onclick = () => startGame("daily");
-  $("#btn-shop").onclick = () => show("shop");
+  $("#btn-shop").onclick = () => { show("shop"); $("#shop-list").scrollTop = 0; };
   $("#btn-board").onclick = () => show("ranking");
   $("#btn-over-menu").onclick = () => { if (G && G.levelNo) { worldShown = Math.floor((G.levelNo - 1) / 10); show("levels"); } else show("menu"); };
   $("#btn-missions").onclick = () => show("missions");
@@ -879,14 +879,19 @@
     const rk = rankOf(S.xp);
     $("#rank-name").textContent = rk.name;
     $("#rank-bar").style.width = (rk.pct * 100).toFixed(1) + "%";
-    $("#daily-date").textContent = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-    const today = S.daily.date === todayKey();
-    $("#daily-state").textContent = today && S.daily.score !== null
-      ? `Score officiel ${S.daily.score} · meilleur essai ${S.daily.best}`
-      : "Pas encore joué · le premier essai compte";
+    renderDaily();
     const doneCount = S.missions.list.filter((m) => m.done).length;
     const pill = $("#missions-pill"); pill.hidden = false; pill.textContent = `${doneCount}/3`;
     refreshEventPill();
+  }
+  // Défi du jour: its card is on the « Modes de jeu » page; home only shows a pill while it waits.
+  function renderDaily() {
+    $("#daily-date").textContent = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    const played = S.daily.date === todayKey() && S.daily.score !== null;
+    $("#daily-state").textContent = played
+      ? `Score officiel ${S.daily.score} · meilleur essai ${S.daily.best}`
+      : "Pas encore joué · le premier essai compte";
+    $("#daily-pill").hidden = played;
   }
   // Home: the chosen mode, in one block that opens the « Modes de jeu » page.
   function renderModePick() {
@@ -912,7 +917,7 @@
   $("#btn-modes").onclick = () => { sfx("ui"); show("modes-screen"); };
   // « Modes de jeu » page: every mode with its rule and record; a tap picks it and goes back home.
   function renderModes() {
-    renderDifficulty();
+    renderDifficulty(); renderDaily();
     const box = $("#modes"); box.innerHTML = "";
     for (const id of MODE_IDS) {
       const m = MODES[id], b = document.createElement("button");
@@ -1012,7 +1017,7 @@
   // ---------- shop (first tap on a locked item previews it, second tap buys) ----------
   let shopCat = "skin", preview = null;
   document.querySelectorAll("#shop-tabs .tab").forEach((t) => (t.onclick = () => {
-    shopCat = t.dataset.cat;
+    shopCat = t.dataset.cat; $("#shop-list").scrollTop = 0;
     document.querySelectorAll("#shop-tabs .tab").forEach((x) => x.setAttribute("aria-selected", x === t));
     renderShop();
   }));
@@ -1110,7 +1115,10 @@
     bindAll();
     const list = $("#shop-list"); list.innerHTML = "";
     const isMusic = shopCat === "music", cat = shopCat === "lvtheme" ? "skin" : shopCat;
-    const items = shopCat === "lvtheme" ? levelThemeItems() : CATALOG[shopCat];
+    // Order: yours first, then what you can buy now, then the rest (cheapest first).
+    const rank = (it) => (S.owned[cat].includes(it.id) ? 0 : reqInfo(it.req).ok && S.coins >= it.price ? 1 : reqInfo(it.req).ok ? 2 : 3);
+    const items = shopCat === "lvtheme" ? levelThemeItems()
+      : CATALOG[shopCat].map((it, i) => ({ it, i, r: rank(it) })).sort((a, b) => a.r - b.r || (a.r ? a.it.price - b.it.price : a.i - b.i)).map((x) => x.it);
     if (!items.length) { const p = document.createElement("p"); p.className = "intro"; p.textContent = "Joue les niveaux : chaque niveau réussi avec ses 3 quêtes débloque son thème ici."; list.appendChild(p); }
     for (const item of items) {
       const owned = S.owned[cat].includes(item.id), on = isMusic ? S.track === item.id : S.equipped[cat] === item.id;
@@ -1326,14 +1334,15 @@
     $("#set-cb").setAttribute("aria-pressed", S.colorblind);
     $("#set-latency").textContent = S.calibrated ? `${Math.round(S.latency * 1000)} ms compensés` : "Non calibré";
     $("#app-version").textContent = VERSION;
-    const seg = $("#set-track"); seg.innerHTML = "";
-    for (const id of Object.keys(TRACKS).filter((t) => S.owned.music.includes(t))) { // more in the shop
-      const b = document.createElement("button");
-      b.textContent = TRACKS[id].name; b.setAttribute("aria-pressed", S.track === id);
-      if (TRACKS[id].src && Music.failed[id]) { b.disabled = true; b.title = "Fichier absent de cette version"; }
-      b.onclick = () => { S.track = id; save(); renderSettings(); sfx("ui"); updateMenuMusic(); }; // the menus switch to it too
-      seg.appendChild(b);
+    // Music: a drop-down list of the owned tracks (the shop has 20 more).
+    const sel = $("#set-track"); sel.innerHTML = "";
+    for (const id of Object.keys(TRACKS).filter((t) => S.owned.music.includes(t))) {
+      const o = document.createElement("option");
+      o.value = id; o.textContent = TRACKS[id].name; o.selected = S.track === id;
+      if (TRACKS[id].src && Music.failed[id]) { o.disabled = true; o.textContent += " (absente)"; }
+      sel.appendChild(o);
     }
+    sel.onchange = () => { S.track = sel.value; save(); sfx("ui"); updateMenuMusic(); }; // the menus switch to it too
     resetArmed = false; $("#btn-reset").textContent = "Effacer"; $("#reset-hint").textContent = "Crédits, records, achats";
     renderServer();
     renderAccount();
