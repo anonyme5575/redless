@@ -51,29 +51,72 @@
   const fxCv = $("#fx"), fxCtx = fxCv.getContext("2d");
   const rainCv = $("#rain"), rainCtx = rainCv.getContext("2d");
   let drops = [], rainColor = "#36c9ff", parts = [], dirty = false;
+  // Background animation (shop « Fonds »): pluie, neige, etoiles, bulles, grille, matrice, aucun.
+  let bgStyle = "pluie", gridOffset = 0;
+  const BG_COUNT = { pluie: 4, neige: 5, etoiles: 3, bulles: 14, matrice: 14, grille: 0, aucun: 0 }; // px per item
+  const GLYPHS = "01アイウエオカキクケコサシスセソタチツテト";
   function sizeCanvases() {
     const r = app.getBoundingClientRect(), d = dpr();
     for (const [cv, cx] of [[fxCv, fxCtx], [rainCv, rainCtx]]) {
       cv.width = r.width * d; cv.height = r.height * d; cx.setTransform(d, 0, 0, d, 0, 0);
     }
-    drops = Array.from({ length: Math.round(r.width / 4) }, () => newDrop(r.width, r.height, true));
+    const per = BG_COUNT[bgStyle] || 0;
+    drops = per ? Array.from({ length: Math.round(r.width / per) }, (_, i) => newDrop(r.width, r.height, true, i)) : [];
   }
   window.addEventListener("resize", sizeCanvases);
-  function newDrop(w, h, anywhere) {
+  function setBgStyle(s) { if (s === bgStyle) return; bgStyle = BG_COUNT[s] === undefined ? "pluie" : s; sizeCanvases(); }
+  function newDrop(w, h, anywhere, i = 0) {
     const z = Math.random();
-    return { x: Math.random() * (w + 60), y: anywhere ? Math.random() * h : -20, len: 8 + z * 22, v: 7 + z * 11, a: 0.05 + z * 0.22 };
+    switch (bgStyle) {
+      case "neige": return { x: Math.random() * w, y: anywhere ? Math.random() * h : -10, r: 0.8 + z * 2, v: 0.4 + z * 1.1, a: 0.15 + z * 0.45, ph: Math.random() * 6 };
+      case "etoiles": return { x: Math.random() * w, y: Math.random() * h, r: 0.5 + z * 1.4, a: 0.15 + z * 0.55, ph: Math.random() * 6 };
+      case "bulles": return { x: Math.random() * w, y: anywhere ? Math.random() * h : h + 20, r: 2 + z * 7, v: 0.3 + z * 0.9, a: 0.08 + z * 0.22, ph: Math.random() * 6 };
+      case "matrice": return { x: i * 14 + 4, y: anywhere ? Math.random() * h : -20 - Math.random() * h, v: 1.5 + z * 3.5, a: 0.06 + z * 0.22, len: 5 + Math.floor(z * 10), ch: [] };
+      default: return { x: Math.random() * (w + 60), y: anywhere ? Math.random() * h : -20, len: 8 + z * 22, v: 7 + z * 11, a: 0.05 + z * 0.22 };
+    }
   }
   function drawRain(dt, speed) {
-    const w = rainCv.width / dpr(), h = rainCv.height / dpr(), k = speed * dt / 16.7;
-    rainCtx.clearRect(0, 0, w, h);
-    rainCtx.strokeStyle = rainColor; rainCtx.lineWidth = 1;
-    for (const d of drops) {
-      d.y += d.v * k; d.x -= d.v * k * 0.12;
-      if (d.y > h + 20) Object.assign(d, newDrop(w, h, false));
-      rainCtx.globalAlpha = d.a;
-      rainCtx.beginPath(); rainCtx.moveTo(d.x, d.y); rainCtx.lineTo(d.x + d.len * 0.12, d.y - d.len); rainCtx.stroke();
+    const w = rainCv.width / dpr(), h = rainCv.height / dpr(), k = speed * dt / 16.7, c = rainCtx;
+    c.clearRect(0, 0, w, h);
+    c.strokeStyle = c.fillStyle = rainColor; c.lineWidth = 1;
+    if (bgStyle === "grille") {
+      gridOffset = (gridOffset + k * 0.6) % 32;
+      c.globalAlpha = 0.07; c.beginPath();
+      for (let x = 0; x <= w; x += 32) { c.moveTo(x, 0); c.lineTo(x, h); }
+      for (let y = gridOffset - 32; y <= h; y += 32) { c.moveTo(0, y); c.lineTo(w, y); }
+      c.stroke(); c.globalAlpha = 1; return;
     }
-    rainCtx.globalAlpha = 1;
+    if (bgStyle === "matrice") c.font = "12px monospace";
+    for (const d of drops) {
+      switch (bgStyle) {
+        case "neige":
+          d.y += d.v * k; d.ph += 0.02 * k; d.x += Math.sin(d.ph) * 0.3 * k;
+          if (d.y > h + 10) Object.assign(d, newDrop(w, h, false));
+          c.globalAlpha = d.a; c.beginPath(); c.arc(d.x, d.y, d.r, 0, Math.PI * 2); c.fill(); break;
+        case "etoiles":
+          d.ph += 0.03 * k;
+          c.globalAlpha = d.a * (0.55 + 0.45 * Math.sin(d.ph)); c.fillRect(d.x, d.y, d.r, d.r); break;
+        case "bulles":
+          d.y -= d.v * k; d.ph += 0.02 * k; d.x += Math.sin(d.ph) * 0.25 * k;
+          if (d.y < -20) Object.assign(d, newDrop(w, h, false));
+          c.globalAlpha = d.a; c.beginPath(); c.arc(d.x, d.y, d.r, 0, Math.PI * 2); c.stroke(); break;
+        case "matrice":
+          d.y += d.v * k;
+          if (d.y - d.len * 14 > h) Object.assign(d, newDrop(w, h, false, Math.round((d.x - 4) / 14)));
+          for (let i = 0; i < d.len; i++) {
+            if (!d.ch[i] || Math.random() < 0.02) d.ch[i] = GLYPHS[(Math.random() * GLYPHS.length) | 0];
+            c.globalAlpha = d.a * (1 - i / d.len) * (i === 0 ? 2.5 : 1);
+            c.fillText(d.ch[i], d.x, d.y - i * 14);
+          }
+          break;
+        default:
+          d.y += d.v * k; d.x -= d.v * k * 0.12;
+          if (d.y > h + 20) Object.assign(d, newDrop(w, h, false));
+          c.globalAlpha = d.a;
+          c.beginPath(); c.moveTo(d.x, d.y); c.lineTo(d.x + d.len * 0.12, d.y - d.len); c.stroke();
+      }
+    }
+    c.globalAlpha = 1;
   }
 
   // ---------- particles ----------
@@ -97,6 +140,32 @@
     if (kind === "glitch") {
       parts.push({ type: "slice", x: x - 40, y: y - 3, w: 80, h: 6, life: 0.8, color: cssVar("--red") });
       for (let i = 0; i < (big ? 14 : 9); i++) parts.push({ type: "slice", x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 50, w: 10 + Math.random() * 50, h: 2 + Math.random() * 6, life: 0.6 + Math.random() * 0.4, color: i % 3 ? color : cssVar("--holo") });
+      return;
+    }
+    if (kind === "bulles") {
+      for (let i = 0; i < (big ? 16 : 10); i++) parts.push({ type: "bubble", x: x + (Math.random() - 0.5) * 30, y, vx: (Math.random() - 0.5) * 0.8, vy: -0.8 - Math.random() * 2, r: 3 + Math.random() * 6, life: 1, color: i % 3 ? color : cssVar("--holo") });
+      return;
+    }
+    if (kind === "neige") {
+      for (let i = 0; i < (big ? 22 : 14); i++) { const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 3; parts.push({ type: "flake", x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, r: 1.5 + Math.random() * 2.5, life: 1, color: "#ffffff" }); }
+      return;
+    }
+    if (kind === "coeurs") {
+      for (let i = 0; i < (big ? 12 : 7); i++) parts.push({ type: "heart", x: x + (Math.random() - 0.5) * 24, y, vx: (Math.random() - 0.5) * 2, vy: -1.5 - Math.random() * 2.5, size: 5 + Math.random() * 5, life: 1, color: i % 2 ? "#ff5c8a" : color });
+      return;
+    }
+    if (kind === "anneaux") {
+      for (let i = 0; i < 3; i++) parts.push({ type: "ring", x, y, r: 3, life: 1, delay: i * 5, color: i === 1 ? cssVar("--holo") : color });
+      return;
+    }
+    if (kind === "laser") {
+      parts.push({ type: "beam", x, y, dir: "h", life: 1, color }); parts.push({ type: "beam", x, y, dir: "v", life: 1, color: cssVar("--holo") });
+      parts.push({ type: "hexring", x, y, r: 4, life: 1, color });
+      return;
+    }
+    if (kind === "artifice") {
+      const cols = [cssVar("--gold"), color, cssVar("--holo"), "#ff5c8a", "#ffffff"];
+      for (let i = 0; i < (big ? 40 : 26); i++) { const a = (i / (big ? 40 : 26)) * Math.PI * 2, sp = 3 + Math.random() * 3; parts.push({ type: "spark", x, y, px: x, py: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, color: cols[i % cols.length] }); }
       return;
     }
     if (kind === "nova") {
@@ -129,7 +198,29 @@
     for (const p of parts) {
       fxCtx.globalAlpha = Math.min(1, p.life);
       fxCtx.fillStyle = fxCtx.strokeStyle = p.color;
-      if (p.type === "ring" || p.type === "hexring") {
+      if (p.delay > 0) { p.delay -= k; p.life += 0.03 * k; continue; } // staggered rings wait their turn
+      if (p.type === "bubble") {
+        p.x += p.vx * k; p.y += p.vy * k; fxCtx.lineWidth = 1.5;
+        fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.r * (1.2 - p.life * 0.2), 0, Math.PI * 2); fxCtx.stroke();
+      } else if (p.type === "flake") {
+        p.x += p.vx * k; p.y += p.vy * k; p.vx *= 0.96; p.vy = p.vy * 0.96 + 0.05 * k;
+        fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2); fxCtx.fill();
+      } else if (p.type === "heart") {
+        p.x += p.vx * k; p.y += p.vy * k; p.vy *= 0.98;
+        const s = p.size; fxCtx.beginPath();
+        fxCtx.moveTo(p.x, p.y + s * 0.9);
+        fxCtx.bezierCurveTo(p.x - s * 1.4, p.y - s * 0.2, p.x - s * 0.6, p.y - s * 1.3, p.x, p.y - s * 0.4);
+        fxCtx.bezierCurveTo(p.x + s * 0.6, p.y - s * 1.3, p.x + s * 1.4, p.y - s * 0.2, p.x, p.y + s * 0.9);
+        fxCtx.fill();
+      } else if (p.type === "beam") {
+        const w = fxCv.width / dpr(), h = fxCv.height / dpr(); fxCtx.lineWidth = 3 * p.life;
+        fxCtx.beginPath();
+        if (p.dir === "h") { fxCtx.moveTo(0, p.y); fxCtx.lineTo(w, p.y); } else { fxCtx.moveTo(p.x, 0); fxCtx.lineTo(p.x, h); }
+        fxCtx.stroke(); p.life -= 0.02 * k;
+      } else if (p.type === "spark") {
+        p.px = p.x; p.py = p.y; p.x += p.vx * k; p.y += p.vy * k; p.vx *= 0.96; p.vy = p.vy * 0.96 + 0.08 * k;
+        fxCtx.lineWidth = 2; fxCtx.beginPath(); fxCtx.moveTo(p.px - p.vx * 2, p.py - p.vy * 2); fxCtx.lineTo(p.x, p.y); fxCtx.stroke();
+      } else if (p.type === "ring" || p.type === "hexring") {
         p.r += (p.type === "ring" ? 3.2 : 2.4) * k; fxCtx.lineWidth = 3 * p.life;
         if (p.type === "ring") { fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2); } else hexPath(fxCtx, p.x, p.y, p.r);
         fxCtx.stroke();
@@ -243,6 +334,6 @@
 
   NT.fx = {
     initFrames, redrawFrames, sizeCanvases, drawRain, burst, drawFx, shareCard,
-    setRainColor(c) { rainColor = c; }, cssVar,
+    setRainColor(c) { rainColor = c; }, setBgStyle, cssVar,
   };
 })();

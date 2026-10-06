@@ -1,16 +1,19 @@
 (() => {
   "use strict";
-  const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
+  const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DIFFICULTIES, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
+  const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.2";
+  const VERSION = "3.3";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
   const defaults = {
     coins: 0, bests: {}, games: 0, name: "", mode: "classic",
-    owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"], music: ["sync", "synth"] },
-    equipped: { skin: "minuit", fx: "eclats", shape: "carre" },
+    owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"], music: ["sync", "synth"], bg: ["pluie", "aucun"] },
+    equipped: { skin: "minuit", fx: "eclats", shape: "carre", bg: "pluie" },
+    difficulty: "normal", // modes only; each campaign level has its own
+    levels: {},           // campaign: { [n]: { q: [main, bonus, bonus] done, best } }
     sound: true,
     musicVol: 0.9, sfxVol: 0.8, vibration: true, colorblind: false, track: "sync",
     latency: 0, calibrated: false, tutorialDone: false, xp: 0,
@@ -34,6 +37,7 @@
       if (s.xp === undefined) out.xp = oldScores.reduce((a, e) => a + (e.score || 0), 0);
       delete out.scores; // the local leaderboard is gone: only the world one remains
       if (!TRACKS[out.track]) out.track = "sync";
+      if (!DIFFICULTIES[out.difficulty]) out.difficulty = "normal";
       out.sound = true; // the mute button is gone: volumes are set in Réglages
       return out;
     } catch { return clone(defaults); }
@@ -82,7 +86,7 @@
   };
   $("#btn-pause").innerHTML = ICONS.pause;
   $("#btn-settings").innerHTML = ICONS.gear;
-  const BACK_TO = { privacy: "settings", calib: "settings", profile: "ranking" };
+  const BACK_TO = { privacy: "settings", calib: "settings", profile: "ranking", level: "levels" };
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
     b.onclick = () => show(BACK_TO[b.closest(".screen").id] || "menu");
@@ -94,11 +98,14 @@
     current = id;
     for (const k in screens) screens[k].hidden = k !== id;
     if (id !== "shop") try { stopPreviewMusic(); } catch {} // leaving the shop ends a music preview
+    // A level's theme shows on its card, during the run and on its result; the player's own look elsewhere.
+    const keepTheme = id === "level" || ((id === "play" || id === "over") && G && G.levelNo);
+    if (!keepTheme && app.dataset.skin !== S.equipped.skin) applyLook();
     updateMenuMusic();
     try { showUpdateBar(); } catch {} // hidden during a run
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
-       settings: renderSettings, duel: renderDuel, calib: renderCalib, "modes-screen": renderModes })[id]?.();
+       settings: renderSettings, duel: renderDuel, calib: renderCalib, "modes-screen": renderModes, levels: renderLevels })[id]?.();
     fx.initFrames(sc); fx.redrawFrames(sc);
     if (!reduceMotion) {
       sc.classList.remove("enter"); void sc.offsetWidth; sc.classList.add("enter");
@@ -108,9 +115,20 @@
     sc.scrollTop = 0;
   }
   function bindAll() { document.querySelectorAll('[data-bind="coins"]').forEach((e) => (e.textContent = S.coins)); }
-  function applyLook(skin = S.equipped.skin, shape = S.equipped.shape) {
+  // Themes made from a hue (level themes « lvN », shop themes with a hue) are set as inline
+  // CSS variables; the hand-made ones come from the stylesheet ([data-skin]).
+  const THEME_KEYS = Object.keys(LV.themeVars(0));
+  function skinVars(id) {
+    if (/^lv\d+$/.test(id)) { const lv = LV.get(+id.slice(2)); return LV.themeVars(lv.hue, lv.sat); }
+    const it = CATALOG.skin.find((s) => s.id === id);
+    return it && it.hue !== undefined ? LV.themeVars(it.hue, it.sat) : null;
+  }
+  function applyLook(skin = S.equipped.skin, shape = S.equipped.shape, back = S.equipped.bg) {
     app.dataset.skin = skin;
+    const v = skinVars(skin);
+    for (const k of THEME_KEYS) v ? app.style.setProperty(k, v[k]) : app.style.removeProperty(k);
     app.dataset.shape = shape;
+    fx.setBgStyle(back);
     app.dataset.cb = S.colorblind ? "1" : "";
     const bg = cssVar("--bg"), meta = document.querySelector('meta[name="theme-color"]');
     if (meta && bg) meta.content = bg;
@@ -224,8 +242,21 @@
 
   // ---------- game state ----------
   let G = null;
+  // A mode adjusted by a difficulty (or by a campaign level): tempo, feints, lives.
+  function tuned(M, t) {
+    return {
+      ...M, startBpm: Math.max(50, M.startBpm + t.bpm), bpmStep: M.bpmStep * t.step,
+      lives: M.lives ? Math.max(1, M.lives + t.lives) : 0,
+      feint: { ...M.feint, base: Math.min(0.85, M.feint.base * t.feint), step: M.feint.step * t.feint, max: Math.min(0.85, M.feint.max * t.feint) },
+    };
+  }
   function newGame(modeId, opts = {}) {
-    const M = MODES[modeId];
+    const lv = opts.level ? LV.get(opts.level) : null;
+    // Défi du jour and Duel stay in Normal: everybody plays the same game.
+    const diffId = lv || MODES[modeId].seeded ? "normal" : S.difficulty;
+    const t = lv ? lv.tune : DIFFICULTIES[diffId];
+    const M = tuned(MODES[modeId], t);
+    if (lv) M.name = `Niveau ${lv.n}`;
     let seed = null;
     if (modeId === "daily") seed = hashStr("daily-" + todayKey());
     if (modeId === "duel") seed = hashStr("duel-" + opts.code);
@@ -241,7 +272,9 @@
       feintStreak: 0, maxFeintStreak: 0, gold: 0, perfects: 0, inversions: 0, bosses: 0, specials: 0,
       freezeUntil: 0, frozen: false, boss: null, target: "green", mirrorBeats: 0, holding: null, cause: null,
       trackOn: false, spawnLog: [],
+      levelNo: lv ? lv.n : 0, diffId, lifeMul: t.life, redAdd: t.red,
     };
+    if (lv) applyLook("lv" + lv.n); // every level is played in its own colours
     boardEl.className = "board" + (M.rhythm ? " rhythm" : "");
     if (seed !== null) for (let k = 0; k < 16; k++) G.rng(); // warm up: the first draws of a fresh seed are less mixed
     const [c, r] = M.grids ? M.grids[0] : DEFAULT_GRID;
@@ -290,9 +323,9 @@
   // Difficulty curve. Lifetime is counted in beats, so it shrinks with the tempo and with the level.
   function lifetimeMs() {
     const beats = Math.max(1.6, 3.4 - (G.level - 1) * 0.18);
-    return Math.max(380, beats * spb() * 1000);
+    return Math.max(300, beats * spb() * 1000 * G.lifeMul);
   }
-  const redChance = () => Math.min(0.4, 0.24 + (G.level - 1) * 0.02);
+  const redChance = () => Math.max(0.12, Math.min(0.5, 0.24 + (G.level - 1) * 0.02 + G.redAdd));
   function feintChance() {
     const f = G.M.feint;
     const base = G.level < f.from ? 0 : Math.min(f.max, f.base + (G.level - f.from) * f.step);
@@ -637,11 +670,27 @@
       mode: G.modeId, score: G.score, bpm, level: G.level, maxCombo: G.maxCombo, maxFeintStreak: G.maxFeintStreak,
       gold: G.gold, greens: G.greens, perfects: G.perfects, inversions: G.inversions, bosses: G.bosses,
       specials: G.specials, gridCells: cells.length, one: 1, dailyPlayed: G.modeId === "daily" ? 1 : 0,
-      duration: G.clock,
+      duration: G.clock, seconds: Math.floor(G.clock / 1000),
     };
-    const earned = Math.floor(G.score / 5) + G.coins;
-    const prev = S.bests[G.modeId] || 0, isBest = G.score > prev;
+    const D = DIFFICULTIES[G.diffId] || DIFFICULTIES.normal;
+    let earned = Math.round((Math.floor(G.score / 5) + G.coins) * (G.levelNo ? 1 : D.coins));
+    // Mode records only count from Normal up, never from campaign levels.
+    const counts = !G.levelNo && D.ranked;
+    const prev = S.bests[G.modeId] || 0, isBest = counts && G.score > prev;
     const rankBefore = rankOf(S.xp);
+    // Campaign: quests of the level, rewards for the ones done for the first time.
+    let lvResult = null;
+    if (G.levelNo) {
+      const lv = LV.get(G.levelNo), rec = S.levels[lv.n] || { q: [false, false, false], best: 0 };
+      const now = lv.quests.map((q) => LV.questDone(q, run)), fresh = now.map((d, i) => d && !rec.q[i]);
+      const bonus = fresh.reduce((a, f, i) => a + (f ? lv.reward * (i === 0 ? 2 : 1) : 0), 0);
+      const was3 = rec.q.every(Boolean);
+      rec.q = rec.q.map((d, i) => d || now[i]); rec.best = Math.max(rec.best, G.score);
+      S.levels[lv.n] = rec; earned += bonus;
+      const themeId = "lv" + lv.n, theme = !was3 && rec.q.every(Boolean) && !S.owned.skin.includes(themeId);
+      if (theme) S.owned.skin.push(themeId);
+      lvResult = { lv, now, fresh, bonus, cleared: rec.q[0], theme };
+    }
     S.coins += earned; S.games++; S.xp += G.score;
     if (isBest) S.bests[G.modeId] = G.score;
     let tag = "";
@@ -675,9 +724,27 @@
     $("#over-xp").textContent = `+${G.score} pts`;
     const ul = $("#over-missions"); ul.innerHTML = ""; ul.hidden = !done.length;
     done.forEach((m) => { const li = document.createElement("li"); li.textContent = `Mission accomplie : ${m.text}`; const b = document.createElement("b"); b.textContent = `+${m.reward}`; li.appendChild(b); ul.appendChild(li); });
+    if (lvResult) {
+      // The level's quests replace the mission list: done / not done, with what they paid.
+      const { lv, now, fresh } = lvResult;
+      ul.hidden = false; ul.innerHTML = "";
+      lv.quests.forEach((q, i) => {
+        const li = document.createElement("li"); li.className = now[i] ? "ok" : "ko";
+        li.textContent = `${now[i] ? "✓" : "✗"} ${q.text}${q.main ? " (objectif)" : ""}`;
+        if (fresh[i]) { const b = document.createElement("b"); b.textContent = `+${lv.reward * (i === 0 ? 2 : 1)}`; li.appendChild(b); }
+        ul.appendChild(li);
+      });
+      $("#over-mode").textContent = `Niveau ${lv.n} · ${lv.name}`;
+      if (now[0]) { tt.textContent = tt.dataset.text = "Niveau réussi"; tt.style.color = "var(--green)"; }
+      const next = $("#btn-next-level");
+      next.hidden = !lvResult.cleared || lv.n >= LV.COUNT;
+      next.textContent = `Niveau ${lv.n + 1}`;
+      if (lvResult.theme) setTimeout(() => toast(`Thème « ${lv.name} » débloqué dans la boutique`), 1300);
+    } else $("#btn-next-level").hidden = true;
+    $("#btn-over-menu").textContent = G.levelNo ? "Niveaux" : "Menu";
     const form = $("#name-form"), input = $("#name-input");
     // Pseudo asked once, for the world leaderboard (changed later in Réglages).
-    form.hidden = !!S.name || !NT.online.enabled || !NT.online.GLOBAL_MODES.includes(G.modeId) || G.score === 0;
+    form.hidden = !!S.name || !NT.online.enabled || !NT.online.GLOBAL_MODES.includes(G.modeId) || G.score === 0 || !!G.levelNo || !D.ranked;
     input.value = S.name;
     clearTiles();
     bindAll();
@@ -685,7 +752,10 @@
     countUp($("#over-score"), G.score);
     if (rk.i > rankBefore.i) setTimeout(() => toast(`Nouveau rang : ${rk.name}`), 900);
     else if (done.length) setTimeout(() => toast(`${done.length} mission${done.length > 1 ? "s" : ""} accomplie${done.length > 1 ? "s" : ""}`), 900);
-    onlineSubmit(run);
+    // World leaderboard: modes only, from Normal up.
+    if (G.levelNo) $("#over-online").hidden = true;
+    else if (!D.ranked) { const el = $("#over-online"); el.hidden = false; el.className = "over-online"; el.textContent = `${D.name} : partie non classée au mondial.`; }
+    else onlineSubmit(run);
   }
   // ---------- world leaderboard ----------
   let unsentRun = null;
@@ -781,7 +851,7 @@
     $("#paused").hidden = true; G.running = false;
     Music.stop(); Synth.resume();
     clearTiles();
-    show("menu");
+    show(G.levelNo ? "levels" : "menu");
   }
   $("#btn-pause").onclick = pause;
   $("#btn-resume").onclick = resume;
@@ -796,7 +866,7 @@
   $("#btn-daily").onclick = () => startGame("daily");
   $("#btn-shop").onclick = () => show("shop");
   $("#btn-board").onclick = () => show("ranking");
-  $("#btn-over-menu").onclick = () => show("menu");
+  $("#btn-over-menu").onclick = () => { if (G && G.levelNo) { worldShown = Math.floor((G.levelNo - 1) / 10); show("levels"); } else show("menu"); };
   $("#btn-missions").onclick = () => show("missions");
   $("#btn-rank").onclick = () => show("missions");
   $("#btn-duel").onclick = () => show("duel");
@@ -820,12 +890,29 @@
   }
   // Home: the chosen mode, in one block that opens the « Modes de jeu » page.
   function renderModePick() {
-    $("#mode-current").textContent = MODES[S.mode].name;
+    const d = DIFFICULTIES[S.difficulty];
+    $("#mode-current").textContent = MODES[S.mode].name + (S.difficulty === "normal" ? "" : ` · ${d.name}`);
     $("#mode-rule").textContent = MODES[S.mode].rule;
+    $("#lv-count").textContent = `${Math.min(LV.COUNT, levelsCleared() + 1)} / ${LV.COUNT} · ★ ${totalStars()}`;
+  }
+  // Difficulty (modes only): 5 steps, with what each one changes for credits and the world board.
+  function renderDifficulty() {
+    const seg = $("#diff-seg"); seg.innerHTML = "";
+    for (const [id, d] of Object.entries(DIFFICULTIES)) {
+      const b = document.createElement("button");
+      b.textContent = d.name; b.dataset.diff = id;
+      b.setAttribute("role", "radio"); b.setAttribute("aria-pressed", id === S.difficulty);
+      b.onclick = () => { S.difficulty = id; save(); sfx("ui"); haptic("ui"); renderDifficulty(); };
+      seg.appendChild(b);
+    }
+    const d = DIFFICULTIES[S.difficulty];
+    $("#diff-note").textContent = `Crédits ×${String(d.coins).replace(".", ",")} · ${d.ranked ? "classé au mondial" : "pas classé au mondial"}`
+      + (S.difficulty === "impossible" ? " · une seule vie" : S.difficulty === "facile" ? " · 2 vies en plus" : "");
   }
   $("#btn-modes").onclick = () => { sfx("ui"); show("modes-screen"); };
   // « Modes de jeu » page: every mode with its rule and record; a tap picks it and goes back home.
   function renderModes() {
+    renderDifficulty();
     const box = $("#modes"); box.innerHTML = "";
     for (const id of MODE_IDS) {
       const m = MODES[id], b = document.createElement("button");
@@ -843,6 +930,74 @@
     }
     fx.initFrames(box);
   }
+  // ---------- campaign: 200 levels in 20 worlds ----------
+  const levelRec = (n) => S.levels[n] || { q: [false, false, false], best: 0 };
+  const levelStars = (n) => levelRec(n).q.filter(Boolean).length;
+  const isCleared = (n) => !!levelRec(n).q[0];
+  const isOpen = (n) => n === 1 || isCleared(n - 1);
+  function levelsCleared() { let n = 0; while (n < LV.COUNT && isCleared(n + 1)) n++; return n; }
+  function totalStars() { let s = 0; for (const k in S.levels) s += levelStars(+k); return s; }
+  const starText = (n) => "★".repeat(n) + "☆".repeat(3 - n);
+  let worldShown = -1;
+  function renderLevels() {
+    $("#lv-stars").textContent = `★ ${totalStars()} / ${LV.COUNT * 3}`;
+    if (worldShown < 0) worldShown = Math.min(LV.WORLDS.length - 1, Math.floor(levelsCleared() / 10));
+    const tabs = $("#world-tabs"); tabs.innerHTML = "";
+    LV.WORLDS.forEach((w, i) => {
+      const t = document.createElement("button");
+      t.className = "tab"; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", i === worldShown);
+      t.textContent = `Monde ${i + 1}`;
+      if (!isOpen(i * 10 + 1)) t.classList.add("locked");
+      t.onclick = () => { worldShown = i; sfx("ui"); renderLevels(); };
+      tabs.appendChild(t);
+    });
+    tabs.querySelector('[aria-selected="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
+    const w = LV.WORLDS[worldShown];
+    let ws = 0; for (let n = worldShown * 10 + 1; n <= worldShown * 10 + 10; n++) ws += levelStars(n);
+    $("#world-name").textContent = `${w.name} · ${MODES[w.mode].name} · ★ ${ws} / 30`;
+    const grid = $("#lv-grid"); grid.innerHTML = "";
+    for (let n = worldShown * 10 + 1; n <= worldShown * 10 + 10; n++) {
+      const lv = LV.get(n), open = isOpen(n), st = levelStars(n), b = document.createElement("button");
+      b.className = "lv-tile" + (open ? "" : " locked") + (st === 3 ? " full" : "");
+      b.style.setProperty("--lv", LV.themeVars(lv.hue, lv.sat)["--holo"]);
+      b.innerHTML = `<b class="num"></b><span class="lv-st"></span>`;
+      b.querySelector("b").textContent = open ? n : "🔒";
+      b.querySelector(".lv-st").textContent = open ? starText(st) : `${n}`;
+      b.setAttribute("aria-label", `Niveau ${n}${open ? `, ${st} étoile${st > 1 ? "s" : ""}` : ", verrouillé"}`);
+      b.onclick = () => { if (!open) { sfx("ui"); return toast(`Réussis le niveau ${n - 1} pour l'ouvrir`); } openLevel(n); };
+      grid.appendChild(b);
+    }
+  }
+  let levelShown = 1;
+  function openLevel(n) {
+    const lv = LV.get(n), rec = levelRec(n);
+    levelShown = n;
+    applyLook("lv" + n); // preview of the level's colours
+    $("#lvd-title").textContent = `Niveau ${n}`;
+    $("#lvd-world").textContent = `Monde ${lv.world + 1} · ${LV.WORLDS[lv.world].name}`;
+    $("#lvd-name").textContent = lv.name;
+    $("#lvd-mode").textContent = `${MODES[lv.mode].name} · ${MODES[lv.mode].rule} · départ ${lv.startBpm} BPM`;
+    $("#lvd-stars").textContent = starText(levelStars(n)) + (rec.best ? ` · record ${rec.best}` : "");
+    const ul = $("#lvd-quests"); ul.innerHTML = "";
+    lv.quests.forEach((q, i) => {
+      const li = document.createElement("li"); li.className = rec.q[i] ? "done" : ""; li.dataset.frame = "sm";
+      li.innerHTML = `<span class="q-mark"></span><span class="q-text"></span><span class="q-reward"><span class="coin"></span></span>`;
+      li.querySelector(".q-mark").textContent = rec.q[i] ? "✓" : i === 0 ? "★" : "☆";
+      li.querySelector(".q-text").textContent = q.text + (q.main ? " · objectif" : " · bonus");
+      li.querySelector(".q-reward").append(rec.q[i] ? "fait" : String(lv.reward * (i === 0 ? 2 : 1)));
+      ul.appendChild(li);
+    });
+    const owned = S.owned.skin.includes("lv" + n);
+    $("#lvd-theme").textContent = owned ? `Thème « ${lv.name} » débloqué : à équiper dans la boutique (onglet Niveaux).`
+      : "Réussis les 3 quêtes pour débloquer ce thème dans la boutique.";
+    show("level");
+    fx.initFrames(ul);
+  }
+  const startLevel = (n) => startGame(LV.get(n).mode, { level: n });
+  $("#btn-levels").onclick = () => { sfx("ui"); worldShown = -1; show("levels"); };
+  $("#btn-lvd-play").onclick = () => startLevel(levelShown);
+  $("#btn-next-level").onclick = () => { if (G && G.levelNo) startLevel(G.levelNo + 1); };
+
   const demo = $("#demo"), demoCells = [];
   for (let i = 0; i < 20; i++) { const c = document.createElement("i"); demo.appendChild(c); demoCells.push(c); }
   let demoNext = 0;
@@ -869,6 +1024,12 @@
     triangle: "polygon(50% 4%, 97% 94%, 3% 94%)",
     octo: "polygon(30% 2%, 70% 2%, 98% 30%, 98% 70%, 70% 98%, 30% 98%, 2% 70%, 2% 30%)",
     bouclier: "polygon(50% 2%, 96% 16%, 92% 60%, 50% 98%, 8% 60%, 4% 16%)",
+    pilule: "inset(8% round 40%)",
+    goutte: "polygon(50% 0, 72% 30%, 88% 55%, 85% 78%, 70% 93%, 50% 98%, 30% 93%, 15% 78%, 12% 55%, 28% 30%)",
+    diamant: "polygon(20% 8%, 80% 8%, 98% 35%, 50% 96%, 2% 35%)",
+    coeur: "polygon(50% 95%, 8% 55%, 2% 35%, 6% 18%, 20% 6%, 35% 6%, 50% 20%, 65% 6%, 80% 6%, 94% 18%, 98% 35%, 92% 55%)",
+    fleche: "polygon(50% 2%, 96% 48%, 68% 48%, 68% 98%, 32% 98%, 32% 48%, 4% 48%)",
+    pixel: "polygon(0 20%, 20% 20%, 20% 0, 80% 0, 80% 20%, 100% 20%, 100% 80%, 80% 80%, 80% 100%, 20% 100%, 20% 80%, 0 80%)",
   };
   // Shop unlock condition: { ok, text } (text says what is needed, with the progress).
   function reqInfo(req) {
@@ -885,6 +1046,9 @@
     if (req.combo) return { ok: S.stats.maxCombo >= req.combo, text: `Combo de ${req.combo} (record ${S.stats.maxCombo})` };
     if (req.bosses) return { ok: S.stats.bosses >= req.bosses, text: `${req.bosses} boss battus (${Math.min(S.stats.bosses, req.bosses)}/${req.bosses})` };
     if (req.missions) return { ok: S.stats.missions >= req.missions, text: `${req.missions} missions (${Math.min(S.stats.missions, req.missions)}/${req.missions})` };
+    if (req.level) return { ok: levelsCleared() >= req.level, text: `Niveau ${req.level} réussi (${Math.min(levelsCleared(), req.level)}/${req.level})` };
+    if (req.stars) { const s = totalStars(); return { ok: s >= req.stars, text: `${req.stars} ★ en niveaux (${Math.min(s, req.stars)}/${req.stars})` }; }
+    if (req.lvtheme) return { ok: levelStars(req.lvtheme) === 3, text: `3 quêtes du niveau ${req.lvtheme}` };
     return { ok: true, text: "" };
   }
   // Music preview in the shop: 8 s of the song (from a third of the way in), or 8 synth beats.
@@ -915,8 +1079,11 @@
     if (cat === "music") {
       p.className = "preview preview-music";
       p.textContent = "♪";
-    } else if (cat === "skin") {
-      const [bg, holo, g, r] = item.colors;
+    } else if (cat === "bg") {
+      p.className = "preview preview-music";
+      p.textContent = BG_GLYPH[item.id] || "·";
+    } else if (cat === "skin" || cat === "lvtheme") {
+      const [bg, holo, g, r] = item.colors || LV.themeColors(item.hue, item.sat);
       p.className = "preview"; p.style.background = bg; p.style.boxShadow = `inset 0 0 0 1px ${holo}`;
       [g, r, g].forEach((c) => { const s = document.createElement("span"); s.style.background = c; p.appendChild(s); });
     } else {
@@ -928,12 +1095,25 @@
     return p;
   }
   function endPreview() { if (preview) { clearTimeout(preview.timer); preview = null; applyLook(); } }
+  const BG_GLYPH = { pluie: "╱╱╱", neige: "❄", etoiles: "✦", bulles: "◯", grille: "▦", matrice: "ア", aucun: "∅" };
+  // « Niveaux » tab: the theme of each level already opened (won with its 3 quests).
+  function levelThemeItems() {
+    const out = [];
+    for (let n = 1; n <= LV.COUNT; n++) {
+      if (!isOpen(n) && !S.owned.skin.includes("lv" + n)) continue;
+      const lv = LV.get(n);
+      out.push({ id: "lv" + n, name: `${n} · ${lv.name}`, price: 0, hue: lv.hue, sat: lv.sat, req: { lvtheme: n } });
+    }
+    return out;
+  }
   function renderShop() {
     bindAll();
     const list = $("#shop-list"); list.innerHTML = "";
-    const isMusic = shopCat === "music";
-    for (const item of CATALOG[shopCat]) {
-      const owned = S.owned[shopCat].includes(item.id), on = isMusic ? S.track === item.id : S.equipped[shopCat] === item.id;
+    const isMusic = shopCat === "music", cat = shopCat === "lvtheme" ? "skin" : shopCat;
+    const items = shopCat === "lvtheme" ? levelThemeItems() : CATALOG[shopCat];
+    if (!items.length) { const p = document.createElement("p"); p.className = "intro"; p.textContent = "Joue les niveaux : chaque niveau réussi avec ses 3 quêtes débloque son thème ici."; list.appendChild(p); }
+    for (const item of items) {
+      const owned = S.owned[cat].includes(item.id), on = isMusic ? S.track === item.id : S.equipped[cat] === item.id;
       const previewing = preview && preview.id === item.id;
       const cond = reqInfo(item.req), blocked = !owned && !cond.ok;
       const b = document.createElement("button");
@@ -950,6 +1130,7 @@
       if (on) st.textContent = isMusic ? "Choisie" : "Équipé";
       else if (owned) st.textContent = isMusic ? "Choisir" : "Équiper";
       else if (previewing) st.innerHTML = blocked ? "Condition à remplir" : `Acheter · <span class="coin"></span>${item.price}`;
+      else if (shopCat === "lvtheme") st.textContent = "Essayer"; // unlocked by quests, never bought
       else st.innerHTML = `<span class="coin"></span>${item.price} · ${isMusic ? "écouter" : "essayer"}`;
       b.appendChild(st);
       b.onclick = () => {
@@ -957,8 +1138,9 @@
         if (!owned && !previewing) {
           endPreview();
           preview = { id: item.id, timer: setTimeout(() => { endPreview(); if (current === "shop") renderShop(); }, 5000) };
-          if (shopCat === "skin") applyLook(item.id, S.equipped.shape);
-          if (shopCat === "shape") applyLook(S.equipped.skin, item.id);
+          if (cat === "skin") applyLook(item.id, S.equipped.shape);
+          if (cat === "shape") applyLook(S.equipped.skin, item.id);
+          if (cat === "bg") applyLook(S.equipped.skin, S.equipped.shape, item.id);
           if (shopCat === "fx") { const a = app.getBoundingClientRect(), r = $("#shop-preview").getBoundingClientRect(); fx.burst(r.left - a.left + r.width / 2, r.top - a.top + r.height / 2, cssVar("--green"), item.id, true); }
           if (isMusic) previewMusic(item.id); else sfx("ui");
           toast(blocked ? `Aperçu de ${item.name} · à débloquer : ${cond.text}` : `Aperçu de ${item.name} · touche encore pour l'acheter`);
@@ -967,12 +1149,12 @@
         if (!owned) {
           if (blocked) { endPreview(); renderShop(); return toast(`Pas encore : ${cond.text}`); }
           if (S.coins < item.price) { endPreview(); renderShop(); return toast(`Il te manque ${item.price - S.coins} crédits`); }
-          S.coins -= item.price; S.owned[shopCat].push(item.id); toast(`${item.name} débloqué`);
+          S.coins -= item.price; S.owned[cat].push(item.id); toast(`${item.name} débloqué`);
         }
         endPreview();
         // Chosen music: it becomes the app's music right away (menus and games).
         if (isMusic) { S.track = item.id; save(); haptic("ui"); stopPreviewMusic(); updateMenuMusic(); return renderShop(); }
-        S.equipped[shopCat] = item.id; save(); applyLook(); sfx("ui"); haptic("ui");
+        S.equipped[cat] = item.id; save(); applyLook(); sfx("ui"); haptic("ui");
         if (shopCat === "fx") { const a = app.getBoundingClientRect(), r = b.getBoundingClientRect(); fx.burst(r.left - a.left + r.width / 2, r.top - a.top + r.height / 3, cssVar("--green"), item.id); }
         renderShop();
       };

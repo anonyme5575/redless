@@ -688,3 +688,55 @@ html, body { touch-action: manipulation; }
 #menu .menu-actions { margin-bottom: auto; }
 #menu .menu-hero { max-height: 240px; }
 #menu .demo { max-height: 100px; }
+
+/* ---------- more tile shapes (shop) ---------- */
+#app[data-shape="pilule"]  .tile { clip-path: inset(8% round 40%); }
+#app[data-shape="goutte"]  .tile { clip-path: polygon(50% 0, 72% 30%, 88% 55%, 85% 78%, 70% 93%, 50% 98%, 30% 93%, 15% 78%, 12% 55%, 28% 30%); }
+#app[data-shape="diamant"] .tile { clip-path: polygon(20% 8%, 80% 8%, 98% 35%, 50% 96%, 2% 35%); }
+#app[data-shape="coeur"]   .tile { clip-path: polygon(50% 95%, 8% 55%, 2% 35%, 6% 18%, 20% 6%, 35% 6%, 50% 20%, 65% 6%, 80% 6%, 94% 18%, 98% 35%, 92% 55%); }
+#app[data-shape="fleche"]  .tile { clip-path: polygon(50% 2%, 96% 48%, 68% 48%, 68% 98%, 32% 98%, 32% 48%, 4% 48%); }
+#app[data-shape="pixel"]   .tile { clip-path: polygon(0 20%, 20% 20%, 20% 0, 80% 0, 80% 20%, 100% 20%, 100% 80%, 80% 80%, 80% 100%, 20% 100%, 20% 80%, 0 80%); }
+#app[data-shape="goutte"] .tile::after, #app[data-shape="diamant"] .tile::after, #app[data-shape="coeur"] .tile::after, #app[data-shape="fleche"] .tile::after { width: 22%; }
+#app[data-shape="goutte"] .tile .timer, #app[data-shape="diamant"] .tile .timer, #app[data-shape="coeur"] .tile .timer, #app[data-shape="fleche"] .tile .timer, #app[data-shape="pilule"] .tile .timer, #app[data-shape="pixel"] .tile .timer { bottom: 22%; left: 30%; right: 30%; }
+
+/* ---------- campaign ---------- */
+.menu-actions .btn-levels { grid-column: 1 / -1; color: var(--gold); gap: 10px; }
+.menu-actions .btn-levels .frame-svg .line, .menu-actions .btn-levels .frame-svg .tick { stroke: var(--gold); }
+.lv-count { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--ink); opacity: .85; }
+.lv-stars { font-family: var(--font-display); font-weight: 700; color: var(--gold); text-shadow: 0 0 8px var(--gold); font-size: 14px; }
+.world-tabs { flex: none; }
+.world-tabs .tab.locked { opacity: .45; }
+.world-name { margin: 0; font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+.lv-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.lv-tile { aspect-ratio: 1; display: grid; place-items: center; align-content: center; gap: 2px; padding: 4px; cursor: pointer; color: var(--ink);
+  background: color-mix(in srgb, var(--lv) 14%, var(--panel)); border: 1px solid var(--lv); box-shadow: inset 0 0 12px color-mix(in srgb, var(--lv) 30%, transparent);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); transition: transform .12s ease, filter .12s ease; }
+.lv-tile b { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--lv); text-shadow: 0 0 10px var(--lv); }
+.lv-tile .lv-st { font-size: 11px; letter-spacing: .05em; color: var(--gold); }
+.lv-tile.full { box-shadow: inset 0 0 18px color-mix(in srgb, var(--gold) 45%, transparent); }
+.lv-tile.locked { filter: grayscale(.85) brightness(.6); }
+.lv-tile.locked b { font-size: 16px; text-shadow: none; }
+.lv-tile.locked .lv-st { color: var(--muted); }
+.lv-tile:active { transform: scale(.94); }
+.lvd-head { display: grid; justify-items: center; gap: 4px; padding: 18px 16px; text-align: center; }
+.lvd-name { font-family: var(--font-display); font-size: 24px; letter-spacing: .08em; text-transform: uppercase; color: var(--holo); text-shadow: 0 0 12px var(--glow); }
+.lvd-mode { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.lvd-stars { font-size: 18px; color: var(--gold); letter-spacing: .1em; text-shadow: 0 0 8px var(--gold); }
+.lvd-quests { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lvd-quests li { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px; padding: 11px 14px; }
+.lvd-quests .q-mark { color: var(--gold); font-size: 16px; }
+.lvd-quests .q-text { font-size: 14px; line-height: 1.3; }
+.lvd-quests .q-reward { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gold); }
+.lvd-quests li.done .q-mark, .lvd-quests li.done .q-reward { color: var(--green); }
+.lvd-quests li.done .frame-svg .line { stroke: var(--green); }
+.lvd-theme { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; text-align: center; }
+#over-missions li.ok { color: var(--green); }
+#over-missions li.ko { color: var(--muted); }
+
+/* difficulty (modes page) */
+.diff-box { display: grid; gap: 8px; padding: 12px 14px; }
+.diff-seg { justify-content: flex-start; }
+.diff-seg button { flex: 1 1 auto; }
+.diff-seg button[data-diff="hardcore"][aria-pressed="true"] { border-color: var(--warn); color: var(--warn); }
+.diff-seg button[data-diff="impossible"][aria-pressed="true"] { border-color: var(--red); color: var(--red); }
+.diff-note { margin: 0; font-size: 12.5px; color: var(--muted); }

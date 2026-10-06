@@ -65,6 +65,7 @@
     </button>
     <div class="menu-actions">
       <button class="btn btn-go" id="btn-play">Jouer</button>
+      <button class="btn btn-levels" id="btn-levels" data-frame="sm">Niveaux <span class="lv-count" id="lv-count">1 / 200</span></button>
       <button class="btn" id="btn-missions" data-frame="sm">Missions <span class="pill" id="missions-pill" hidden></span></button>
       <button class="btn" id="btn-duel" data-frame="sm">Duel</button>
       <button class="btn" id="btn-shop" data-frame="sm">Boutique</button>
@@ -156,6 +157,7 @@
       <button class="btn" type="submit" data-frame="sm">Enregistrer</button>
     </form>
     <div class="over-actions">
+      <button class="btn btn-go" id="btn-next-level" hidden>Niveau suivant</button>
       <button class="btn btn-go" id="btn-again">Rejouer</button>
       <button class="btn" id="btn-share" data-frame="sm">Partager</button>
       <button class="btn" id="btn-over-menu" data-frame="sm">Menu</button>
@@ -175,6 +177,8 @@
       <button class="tab" role="tab" data-cat="fx" aria-selected="false">Effets</button>
       <button class="tab" role="tab" data-cat="shape" aria-selected="false">Formes</button>
       <button class="tab" role="tab" data-cat="music" aria-selected="false">Musique</button>
+      <button class="tab" role="tab" data-cat="bg" aria-selected="false">Fonds</button>
+      <button class="tab" role="tab" data-cat="lvtheme" aria-selected="false">Niveaux</button>
     </div>
     <div class="shop-list" id="shop-list"></div>
   </section>
@@ -212,12 +216,48 @@
     <ul class="prof-modes" id="prof-modes"></ul>
   </section>
 
+  <!-- CAMPAIGN: worlds and levels -->
+  <section class="screen scroll" id="levels" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Niveaux</h2>
+      <span class="lv-stars" id="lv-stars">★ 0</span>
+    </div>
+    <div class="tabs world-tabs" id="world-tabs" role="tablist"></div>
+    <p class="world-name" id="world-name"></p>
+    <div class="lv-grid" id="lv-grid"></div>
+  </section>
+
+  <!-- ONE LEVEL: its theme, mode and quests -->
+  <section class="screen scroll" id="level" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2 id="lvd-title">Niveau 1</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="lvd-head" data-frame="hex">
+      <span class="label" id="lvd-world"></span>
+      <b class="lvd-name" id="lvd-name"></b>
+      <span class="lvd-mode" id="lvd-mode"></span>
+      <span class="lvd-stars" id="lvd-stars"></span>
+    </div>
+    <span class="label">Quêtes</span>
+    <ul class="lvd-quests" id="lvd-quests"></ul>
+    <p class="lvd-theme" id="lvd-theme"></p>
+    <button class="btn btn-go" id="btn-lvd-play">Jouer</button>
+  </section>
+
   <!-- GAME MODES -->
   <section class="screen scroll" id="modes-screen" hidden>
     <div class="topbar">
       <button class="icon-btn back" aria-label="Retour"></button>
       <h2>Modes de jeu</h2>
       <span class="spacer"></span>
+    </div>
+    <div class="diff-box" data-frame="sm">
+      <span class="label">Difficulté</span>
+      <div class="seg diff-seg" id="diff-seg" role="radiogroup" aria-label="Difficulté"></div>
+      <p class="diff-note" id="diff-note"></p>
     </div>
     <div class="mode-list" id="modes" role="radiogroup" aria-label="Mode de jeu"></div>
   </section>
@@ -315,7 +355,7 @@
         </span>
       </form>
     </div>
-    <p class="note">Version <span id="app-version">3.2</span></p>
+    <p class="note">Version <span id="app-version">3.3</span></p>
     <p class="note credits">Musique : « Sync or Die » © 2026 anonyme5575. Tous droits réservés, reproduction interdite sans autorisation.<br>Redless © 2026 anonyme5575.</p>
   </section>
 
@@ -388,6 +428,7 @@
   <div class="toast" id="toast"></div>
 </div>
 <script src="js/config.js"></script>
+<script src="js/levels.js"></script>
 <script src="js/online-config.js"></script>
 <script src="js/online.js"></script>
 <script src="js/audio.js"></script>

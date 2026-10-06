@@ -35,6 +35,14 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 | Défi du jour | 3 | 72 BPM | même suite de cases pour tous, un essai officiel par jour |
 | Duel | 3 | 72 BPM | un code de 5 caractères = la même partie pour les deux joueurs |
 
+## Niveaux (campagne)
+
+**200 niveaux** en 20 mondes de 10 (`js/levels.js`), chacun avec **son propre thème de couleurs**, un mode, une difficulté qui monte, et **3 quêtes** : la première (score) réussit le niveau et ouvre le suivant, les deux autres sont des bonus. Chaque quête rapporte des crédits la première fois ; les 3 quêtes débloquent le thème du niveau dans la boutique (onglet Niveaux).
+
+## Difficulté
+
+Dans **Modes de jeu** : Facile, Normal, Difficile, Hardcore, Impossible (tempo, fintes, durée des cases, vies, crédits ×0,5 à ×3). Facile n'est pas classé au mondial ; le Défi du jour et le Duel restent en Normal.
+
 ## Progression
 
 - **Crédits** = score ÷ 5 + bonus. Boutique : 6 thèmes, 5 effets, 5 formes, à essayer avant d'acheter.
