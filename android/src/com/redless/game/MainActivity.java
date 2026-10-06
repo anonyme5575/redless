@@ -1,4 +1,4 @@
-package com.netouchepaslerouge.jeu;
+package com.redless.game;
 
 import android.app.Activity;
 import android.content.ContentValues;
@@ -112,12 +112,12 @@ public class MainActivity extends Activity {
     }
 
     private Uri savePng(byte[] png) throws Exception {
-        String name = "ne-touche-pas-le-rouge-" + System.currentTimeMillis() + ".png";
+        String name = "redless-" + System.currentTimeMillis() + ".png";
         if (Build.VERSION.SDK_INT >= 29) {
             ContentValues values = new ContentValues();
             values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
             values.put(MediaStore.MediaColumns.MIME_TYPE, "image/png");
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/NeTouchePasLeRouge");
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Redless");
             Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
             OutputStream out = getContentResolver().openOutputStream(uri);
             out.write(png);

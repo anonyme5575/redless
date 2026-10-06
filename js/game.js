@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.2";
+  const VERSION = "2.3";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1156,7 +1156,7 @@
   // ---------- share ----------
   function shareText() {
     const what = G.modeId === "duel" ? `en Duel (code ${G.code})` : G.modeId === "daily" ? `au Défi du jour du ${fmtDate()}` : `en ${G.M.name}`;
-    return `J'ai fait ${G.score} ${what} sur Ne touche pas le rouge, à ${Math.round(G.bpmNow)} BPM. Tu fais mieux ?`;
+    return `J'ai fait ${G.score} ${what} sur Redless, à ${Math.round(G.bpmNow)} BPM. Tu fais mieux ?`;
   }
   async function shareRun() {
     if (!G) return;
@@ -1166,7 +1166,7 @@
       const url = cv.toDataURL("image/png"), text = shareText(), n = NT.native();
       if (n && n.shareImage) { n.shareImage(url, text); return; }
       const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
-      const file = new File([blob], "ne-touche-pas-le-rouge.png", { type: "image/png" });
+      const file = new File([blob], "redless.png", { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ files: [file], text }); return; }
         catch (e) { if (e && e.name === "AbortError") return; }

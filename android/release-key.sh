@@ -4,8 +4,8 @@
 # KEEP THE .jks FILE AND ITS PASSWORDS SAFE AND BACKED UP (two places, not in this repository).
 # Lose them and you can never publish an update of the app under the same name again.
 set -euo pipefail
-KS="${1:-$HOME/ne-touche-pas-le-rouge-release.jks}"
-ALIAS="${2:-ntplr}"
+KS="${1:-$HOME/redless-release.jks}"
+ALIAS="${2:-redless}"
 if [ -e "$KS" ]; then echo "$KS existe déjà : rien n'est écrasé."; exit 1; fi
 keytool -genkeypair -v -keystore "$KS" -alias "$ALIAS" -keyalg RSA -keysize 4096 -validity 10000
 cat <<MSG

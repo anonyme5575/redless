@@ -161,6 +161,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
   color: var(--ink); text-shadow: 0 0 18px var(--glow);
 }
 .title .t-red { color: var(--red); text-shadow: 0 0 18px var(--red); display: inline-block; }
+.title .tagline { display: block; margin-top: 6px; font-family: var(--font-ui); font-size: 14px; font-weight: 600; letter-spacing: .14em; color: var(--muted); text-shadow: none; }
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mode {
   display: grid; gap: 1px; text-align: left; padding: 9px 12px; cursor: pointer;

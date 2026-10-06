@@ -1,4 +1,6 @@
-# Ne touche pas le rouge
+# Redless
+
+*Redless* = « sans rouge » en anglais.
 
 Jeu mobile en portrait, jouable à un doigt, avec une interface de cockpit holographique. Touche les cases vertes, jamais les rouges. Les cases tombent sur les temps de la musique, et la musique accélère sans arrêt.
 
@@ -6,7 +8,7 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 
 ## Jouer
 
-- **Android** : installer `dist/ne-touche-pas-le-rouge.apk` (ou l'artefact du workflow « APK » dans l'onglet Actions).
+- **Android** : installer `dist/redless.apk` (ou l'artefact du workflow « APK » dans l'onglet Actions).
 - **Navigateur** : `python3 -m http.server 8000` puis http://localhost:8000.
 
 ## Règles
@@ -49,8 +51,8 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 ## Android
 
 ```sh
-android/build.sh            # APK  -> dist/ne-touche-pas-le-rouge.apk
-android/build.sh aab        # AAB  -> dist/ne-touche-pas-le-rouge.aab (Play Store)
+android/build.sh            # APK  -> dist/redless.apk
+android/build.sh aab        # AAB  -> dist/redless.aab (Play Store)
 android/release-key.sh      # crée ta clé de publication (une seule fois)
 ```
 Il faut seulement un JDK 17+, `curl`, `unzip` et `zip` : `android/fetch-tools.sh` télécharge android.jar (API 34), aapt2, d8, uber-apk-signer et bundletool. Pas besoin d'Android Studio.

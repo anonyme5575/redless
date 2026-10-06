@@ -1,6 +1,6 @@
 {
-  "name": "Ne touche pas le rouge",
-  "short_name": "Pas le rouge",
+  "name": "Redless",
+  "short_name": "Redless",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",

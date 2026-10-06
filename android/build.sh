@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Builds the Android app from the web game. Requires a JDK (17+), curl, unzip and zip.
 #
-#   android/build.sh          -> dist/ne-touche-pas-le-rouge.apk  (install directly on a phone)
-#   android/build.sh aab      -> dist/ne-touche-pas-le-rouge.aab  (upload to the Play Store)
+#   android/build.sh          -> dist/redless.apk  (install directly on a phone)
+#   android/build.sh aab      -> dist/redless.aab  (upload to the Play Store)
 #
 # Environment:
 #   RELEASE_KEYSTORE, RELEASE_KEY_ALIAS, RELEASE_STORE_PASSWORD, RELEASE_KEY_PASSWORD
@@ -16,8 +16,8 @@ A="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$A")"
 T="$A/.tools"
 OUT="$A/build"
-VERSION_CODE="${VERSION_CODE:-5}"
-VERSION_NAME="${VERSION_NAME:-2.2}"
+VERSION_CODE="${VERSION_CODE:-6}"
+VERSION_NAME="${VERSION_NAME:-2.3}"
 
 [ -x "$T/aapt2" ] && [ -s "$T/bundletool.jar" ] || "$A/fetch-tools.sh"
 
@@ -52,7 +52,7 @@ if [ "$FORMAT" = "aab" ]; then
   mv "$M/AndroidManifest.xml" "$M/manifest/"
   cp "$OUT/classes.dex" "$M/dex/"
   (cd "$M" && zip -qr "$OUT/base.zip" .)
-  AAB="$ROOT/dist/ne-touche-pas-le-rouge.aab"
+  AAB="$ROOT/dist/redless.aab"
   rm -f "$AAB"
   java -jar "$T/bundletool.jar" build-bundle --modules="$OUT/base.zip" --output="$AAB"
   if [ "$HAS_KEY" = 1 ]; then
@@ -73,5 +73,5 @@ if [ "$HAS_KEY" = 1 ]; then
   SIGN+=(--ks "$RELEASE_KEYSTORE" --ksAlias "$RELEASE_KEY_ALIAS" --ksPass "$RELEASE_STORE_PASSWORD" --ksKeyPass "${RELEASE_KEY_PASSWORD:-$RELEASE_STORE_PASSWORD}")
 fi
 java -jar "$T/signer.jar" "${SIGN[@]}" >/dev/null
-cp "$OUT"/signed/*.apk "$ROOT/dist/ne-touche-pas-le-rouge.apk"
-echo "APK ($([ "$HAS_KEY" = 1 ] && echo "clé de publication" || echo "clé de debug")) : $ROOT/dist/ne-touche-pas-le-rouge.apk"
+cp "$OUT"/signed/*.apk "$ROOT/dist/redless.apk"
+echo "APK ($([ "$HAS_KEY" = 1 ] && echo "clé de publication" || echo "clé de debug")) : $ROOT/dist/redless.apk"
