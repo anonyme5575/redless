@@ -3,18 +3,19 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.6";
+  const VERSION = "3.1";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
   const defaults = {
     coins: 0, bests: {}, games: 0, name: "", mode: "classic",
-    owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"] },
+    owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"], music: ["sync", "synth"] },
     equipped: { skin: "minuit", fx: "eclats", shape: "carre" },
     sound: true,
     musicVol: 0.9, sfxVol: 0.8, vibration: true, colorblind: false, track: "sync",
     latency: 0, calibrated: false, tutorialDone: false, xp: 0,
     daily: { date: "", score: null, best: 0 }, missions: { date: "", list: [] }, duels: {},
+    stats: { maxCombo: 0, bosses: 0, missions: 0 }, // unlock conditions of the shop
   };
   const clone = (o) => JSON.parse(JSON.stringify(o));
   function load() {
@@ -23,7 +24,8 @@
       if (!raw) return clone(defaults);
       const s = JSON.parse(raw);
       const out = { ...clone(defaults), ...s,
-        owned: { ...defaults.owned, ...s.owned }, equipped: { ...defaults.equipped, ...s.equipped } };
+        owned: { ...defaults.owned, ...s.owned }, equipped: { ...defaults.equipped, ...s.equipped },
+        stats: { ...defaults.stats, ...s.stats } };
       // Older saves: one global best, mode-less scores, no tutorial flag.
       if (typeof s.best === "number" && !out.bests.classic) out.bests.classic = s.best;
       const oldScores = Array.isArray(s.scores) ? s.scores : [];
@@ -80,7 +82,7 @@
   };
   $("#btn-pause").innerHTML = ICONS.pause;
   $("#btn-settings").innerHTML = ICONS.gear;
-  const BACK_TO = { privacy: "settings", calib: "settings" };
+  const BACK_TO = { privacy: "settings", calib: "settings", profile: "ranking" };
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
     b.onclick = () => show(BACK_TO[b.closest(".screen").id] || "menu");
@@ -91,10 +93,12 @@
     if (current === "calib" && id !== "calib") stopCalib();
     current = id;
     for (const k in screens) screens[k].hidden = k !== id;
+    if (id !== "shop") try { stopPreviewMusic(); } catch {} // leaving the shop ends a music preview
     updateMenuMusic();
+    try { showUpdateBar(); } catch {} // hidden during a run
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
-       settings: renderSettings, duel: renderDuel, calib: renderCalib })[id]?.();
+       settings: renderSettings, duel: renderDuel, calib: renderCalib, "modes-screen": renderModes })[id]?.();
     fx.initFrames(sc); fx.redrawFrames(sc);
     if (!reduceMotion) {
       sc.classList.remove("enter"); void sc.offsetWidth; sc.classList.add("enter");
@@ -648,6 +652,9 @@
     }
     if (G.modeId === "duel") { S.duels[G.code] = Math.max(S.duels[G.code] || 0, G.score); tag = `Duel ${G.code}`; }
     const done = applyRunToMissions(run);
+    S.stats.maxCombo = Math.max(S.stats.maxCombo, G.maxCombo);
+    S.stats.bosses += G.bosses || 0;
+    S.stats.missions += done.length;
     save();
 
     const c = G.cause || { type: "red" }, [title, explain] = CAUSES[c.type] || CAUSES.red;
@@ -682,19 +689,30 @@
   // ---------- world leaderboard ----------
   let unsentRun = null;
   const ordinal = (n) => (n === 1 ? "1er" : n + "e");
+  const autoName = () => "Pilote-" + String(1000 + ((Math.random() * 9000) | 0));
   async function onlineSubmit(run) {
     const el = $("#over-online");
     unsentRun = null;
     if (!NT.online.enabled || !NT.online.GLOBAL_MODES.includes(run.mode) || run.score <= 0) { el.hidden = true; return; }
     el.hidden = false; el.className = "over-online";
-    if (!S.name) { unsentRun = run; el.textContent = "Choisis un pseudo ci-dessous pour entrer au classement mondial."; return; }
+    // No pseudo yet: the score still goes straight to the world board, under a generated one.
+    let auto = false;
+    if (!S.name) { S.name = autoName(); save(); auto = true; }
     el.textContent = "Envoi au classement mondial…";
     try {
-      const r = await NT.online.submit(run, S.name);
+      let r;
+      try { r = await NT.online.submit(run, S.name); }
+      catch (e) {
+        if (!auto || !/déjà pris/.test(e.message)) throw e;
+        S.name = autoName(); save();
+        r = await NT.online.submit(run, S.name);
+      }
       if (!r) { el.hidden = true; return; }
       if (r.queued) { el.textContent = "Hors ligne : ton score sera envoyé au classement mondial au retour du réseau."; return; }
       el.className = "over-online ok";
-      el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`;
+      el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`
+        + (auto ? ` · ton pseudo : ${S.name} (à changer ci-dessous ou dans Réglages)` : "");
+      if (auto) { $("#name-form").hidden = false; $("#name-input").value = S.name; }
     } catch (e) {
       el.className = "over-online bad";
       el.textContent = `Classement mondial : ${e.message}.`;
@@ -717,7 +735,7 @@
   let lastStart = { modeId: "classic", opts: {} };
   function startGame(modeId = S.mode, opts = {}) {
     Synth.init(); Synth.applyVolume();
-    if (S.track !== "synth") Music.unlock(S.track);
+    if (TRACKS[S.track].src) Music.unlock(S.track);
     if (!S.tutorialDone && !opts.skipTuto) return startTutorial(() => startGame(modeId, { ...opts, skipTuto: true }));
     lastStart = { modeId, opts };
     Music.stop();
@@ -725,7 +743,7 @@
     show("play");
     fx.sizeCanvases();
     countdown(async () => {
-      G.trackOn = S.track !== "synth" && (await Music.start(S.track, effBpm()));
+      G.trackOn = !!TRACKS[S.track].src && (await Music.start(S.track, effBpm()));
       G.rateBpm = effBpm();
       G.running = true;
     });
@@ -776,7 +794,7 @@
   $("#btn-again").onclick = () => startGame(lastStart.modeId, { ...lastStart.opts, skipTuto: true });
   $("#btn-daily").onclick = () => startGame("daily");
   $("#btn-shop").onclick = () => show("shop");
-  $("#btn-board").onclick = () => { rankMode = MODES[S.mode].hidden ? "classic" : S.mode; show("ranking"); };
+  $("#btn-board").onclick = () => show("ranking");
   $("#btn-over-menu").onclick = () => show("menu");
   $("#btn-missions").onclick = () => show("missions");
   $("#btn-rank").onclick = () => show("missions");
@@ -786,7 +804,7 @@
 
   // ---------- menu ----------
   function renderMenu() {
-    bindAll(); renderModes(); ensureMissions();
+    bindAll(); renderModePick(); ensureMissions();
     const rk = rankOf(S.xp);
     $("#rank-name").textContent = rk.name;
     $("#rank-bar").style.width = (rk.pct * 100).toFixed(1) + "%";
@@ -799,23 +817,29 @@
     const pill = $("#missions-pill"); pill.hidden = false; pill.textContent = `${doneCount}/3`;
     refreshEventPill();
   }
+  // Home: the chosen mode, in one block that opens the « Modes de jeu » page.
+  function renderModePick() {
+    $("#mode-current").textContent = MODES[S.mode].name;
+    $("#mode-rule").textContent = MODES[S.mode].rule;
+  }
+  $("#btn-modes").onclick = () => { sfx("ui"); show("modes-screen"); };
+  // « Modes de jeu » page: every mode with its rule and record; a tap picks it and goes back home.
   function renderModes() {
     const box = $("#modes"); box.innerHTML = "";
     for (const id of MODE_IDS) {
       const m = MODES[id], b = document.createElement("button");
       b.className = "mode"; b.dataset.frame = "sm";
       b.setAttribute("role", "radio"); b.setAttribute("aria-checked", id === S.mode);
-      b.innerHTML = "<b></b><em></em>";
+      b.innerHTML = "<b></b><span></span><em></em>";
       b.querySelector("b").textContent = m.name;
+      b.querySelector("span").textContent = m.rule;
       b.querySelector("em").textContent = `Record ${S.bests[id] || 0}`;
       b.onclick = () => {
         S.mode = id; save(); sfx("ui"); haptic("ui");
-        box.querySelectorAll(".mode").forEach((x) => x.setAttribute("aria-checked", x === b));
-        $("#mode-rule").textContent = m.rule;
+        show("menu");
       };
       box.appendChild(b);
     }
-    $("#mode-rule").textContent = MODES[S.mode].rule;
     fx.initFrames(box);
   }
   const demo = $("#demo"), demoCells = [];
@@ -841,10 +865,55 @@
     losange: "polygon(50% 2%, 98% 50%, 50% 98%, 2% 50%)",
     hexa: "polygon(25% 4%, 75% 4%, 98% 50%, 75% 96%, 25% 96%, 2% 50%)",
     etoile: "polygon(50% 0, 63% 32%, 98% 35%, 71% 58%, 80% 94%, 50% 75%, 20% 94%, 29% 58%, 2% 35%, 37% 32%)",
+    triangle: "polygon(50% 4%, 97% 94%, 3% 94%)",
+    octo: "polygon(30% 2%, 70% 2%, 98% 30%, 98% 70%, 70% 98%, 30% 98%, 2% 70%, 2% 30%)",
+    bouclier: "polygon(50% 2%, 96% 16%, 92% 60%, 50% 98%, 8% 60%, 4% 16%)",
   };
+  // Shop unlock condition: { ok, text } (text says what is needed, with the progress).
+  function reqInfo(req) {
+    if (!req) return { ok: true, text: "" };
+    if (req.rank) {
+      const r = RANKS.find((x) => x.name === req.rank);
+      return { ok: S.xp >= r.xp, text: `Rang ${req.rank}` };
+    }
+    if (req.games) return { ok: S.games >= req.games, text: `${req.games} parties (${Math.min(S.games, req.games)}/${req.games})` };
+    if (req.best) {
+      const v = S.bests[req.best.mode] || 0;
+      return { ok: v >= req.best.score, text: `${req.best.score} pts en ${MODES[req.best.mode].name} (record ${v})` };
+    }
+    if (req.combo) return { ok: S.stats.maxCombo >= req.combo, text: `Combo de ${req.combo} (record ${S.stats.maxCombo})` };
+    if (req.bosses) return { ok: S.stats.bosses >= req.bosses, text: `${req.bosses} boss battus (${Math.min(S.stats.bosses, req.bosses)}/${req.bosses})` };
+    if (req.missions) return { ok: S.stats.missions >= req.missions, text: `${req.missions} missions (${Math.min(S.stats.missions, req.missions)}/${req.missions})` };
+    return { ok: true, text: "" };
+  }
+  // Music preview in the shop: 8 s of the song (from a third of the way in), or 8 synth beats.
+  let previewTimers = [], previewAudio = null;
+  function stopPreviewMusic() {
+    previewTimers.forEach(clearTimeout); previewTimers = [];
+    if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+  }
+  function previewMusic(id) {
+    stopPreviewMusic();
+    const tr = TRACKS[id];
+    Synth.init(); MenuMusic.suspend();
+    let ms = 8000;
+    if (tr.src) {
+      const a = previewAudio = new window.Audio(tr.src);
+      a.volume = S.musicVol;
+      a.addEventListener("loadedmetadata", () => { try { a.currentTime = a.duration / 3; } catch {} }, { once: true });
+      a.play().catch(() => {});
+    } else {
+      const spb = 60 / 112; ms = 8 * spb * 1000;
+      for (let k = 0; k < 8; k++) previewTimers.push(setTimeout(() => Synth.beat(k, spb, 2), k * spb * 1000));
+    }
+    previewTimers.push(setTimeout(() => { stopPreviewMusic(); updateMenuMusic(); }, ms + 300));
+  }
   function itemPreview(cat, item) {
     const p = document.createElement("div");
-    if (cat === "skin") {
+    if (cat === "music") {
+      p.className = "preview preview-music";
+      p.textContent = "♪";
+    } else if (cat === "skin") {
       const [bg, holo, g, r] = item.colors;
       p.className = "preview"; p.style.background = bg; p.style.boxShadow = `inset 0 0 0 1px ${holo}`;
       [g, r, g].forEach((c) => { const s = document.createElement("span"); s.style.background = c; p.appendChild(s); });
@@ -860,19 +929,26 @@
   function renderShop() {
     bindAll();
     const list = $("#shop-list"); list.innerHTML = "";
+    const isMusic = shopCat === "music";
     for (const item of CATALOG[shopCat]) {
-      const owned = S.owned[shopCat].includes(item.id), on = S.equipped[shopCat] === item.id;
+      const owned = S.owned[shopCat].includes(item.id), on = isMusic ? S.track === item.id : S.equipped[shopCat] === item.id;
       const previewing = preview && preview.id === item.id;
+      const cond = reqInfo(item.req), blocked = !owned && !cond.ok;
       const b = document.createElement("button");
-      b.className = "item" + (on ? " equipped" : "") + (owned ? "" : " locked") + (!owned && S.coins < item.price ? " cant" : "") + (previewing ? " previewing" : "");
+      b.className = "item" + (on ? " equipped" : "") + (owned ? "" : " locked") + (!owned && (S.coins < item.price || blocked) ? " cant" : "")
+        + (blocked ? " blocked" : "") + (previewing ? " previewing" : "");
       b.dataset.frame = "sm";
       b.appendChild(itemPreview(shopCat, item));
       const n = document.createElement("span"); n.className = "name"; n.textContent = item.name; b.appendChild(n);
+      if (!owned && item.req) {
+        const c = document.createElement("span"); c.className = "cond" + (cond.ok ? " ok" : "");
+        c.textContent = (cond.ok ? "✓ " : "🔒 ") + cond.text; b.appendChild(c);
+      }
       const st = document.createElement("span"); st.className = "state";
-      if (on) st.textContent = "Équipé";
-      else if (owned) st.textContent = "Équiper";
-      else if (previewing) st.innerHTML = `Acheter · <span class="coin"></span>${item.price}`;
-      else st.innerHTML = `<span class="coin"></span>${item.price} · essayer`;
+      if (on) st.textContent = isMusic ? "Choisie" : "Équipé";
+      else if (owned) st.textContent = isMusic ? "Choisir" : "Équiper";
+      else if (previewing) st.innerHTML = blocked ? "Condition à remplir" : `Acheter · <span class="coin"></span>${item.price}`;
+      else st.innerHTML = `<span class="coin"></span>${item.price} · ${isMusic ? "écouter" : "essayer"}`;
       b.appendChild(st);
       b.onclick = () => {
         Synth.init();
@@ -882,15 +958,18 @@
           if (shopCat === "skin") applyLook(item.id, S.equipped.shape);
           if (shopCat === "shape") applyLook(S.equipped.skin, item.id);
           if (shopCat === "fx") { const a = app.getBoundingClientRect(), r = $("#shop-preview").getBoundingClientRect(); fx.burst(r.left - a.left + r.width / 2, r.top - a.top + r.height / 2, cssVar("--green"), item.id, true); }
-          sfx("ui");
-          toast(`Aperçu de ${item.name} · touche encore pour l'acheter`);
+          if (isMusic) previewMusic(item.id); else sfx("ui");
+          toast(blocked ? `Aperçu de ${item.name} · à débloquer : ${cond.text}` : `Aperçu de ${item.name} · touche encore pour l'acheter`);
           return renderShop();
         }
         if (!owned) {
+          if (blocked) { endPreview(); renderShop(); return toast(`Pas encore : ${cond.text}`); }
           if (S.coins < item.price) { endPreview(); renderShop(); return toast(`Il te manque ${item.price - S.coins} crédits`); }
           S.coins -= item.price; S.owned[shopCat].push(item.id); toast(`${item.name} débloqué`);
         }
         endPreview();
+        // Chosen music: it becomes the app's music right away (menus and games).
+        if (isMusic) { S.track = item.id; save(); haptic("ui"); stopPreviewMusic(); updateMenuMusic(); return renderShop(); }
         S.equipped[shopCat] = item.id; save(); applyLook(); sfx("ui"); haptic("ui");
         if (shopCat === "fx") { const a = app.getBoundingClientRect(), r = b.getBoundingClientRect(); fx.burst(r.left - a.left + r.width / 2, r.top - a.top + r.height / 3, cssVar("--green"), item.id); }
         renderShop();
@@ -901,10 +980,16 @@
   }
 
   // ---------- leaderboard ----------
-  let rankMode = "classic", boardReq = 0;
-  function boardRow(rank, name, small, score, me, k) {
+  let boardReq = 0, boardSeason = null;
+  function boardRow(rank, name, small, score, me, k, onOpen) {
     const li = document.createElement("li");
     if (me) li.className = "me";
+    if (rank <= 3) li.classList.add("top" + rank); // podium colours
+    if (onOpen) {
+      li.classList.add("open"); li.tabIndex = 0; li.setAttribute("role", "button");
+      li.onclick = onOpen;
+      li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } };
+    }
     li.innerHTML = `<span class="rank"></span><span class="who"></span><span class="pts"></span>`;
     li.querySelector(".rank").textContent = rank;
     li.querySelector(".who").textContent = name;
@@ -915,15 +1000,7 @@
   }
   function emptyRow(text) { const li = document.createElement("li"); li.className = "empty"; li.textContent = text; return li; }
   function renderBoard() {
-    const tabs = $("#rank-tabs"); tabs.innerHTML = "";
-    for (const id of MODE_IDS) {
-      const t = document.createElement("button");
-      t.className = "tab"; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", id === rankMode);
-      t.textContent = MODES[id].name;
-      t.onclick = () => { rankMode = id; renderBoard(); };
-      tabs.appendChild(t);
-    }
-    $("#event-card").hidden = false;
+    $("#event-card").hidden = true; // shown by renderEvent once the event is announced
     const ol = $("#board-list"); ol.innerHTML = "";
     renderWorld(ol);
   }
@@ -935,22 +1012,21 @@
   function renderEvent(info) {
     const main = $("#event-main"), sub = $("#event-sub"), bar = $("#event-bar");
     const now = new Date(info.server_now).getTime();
-    if (!info.threshold_at) {
-      main.textContent = `${info.players} / ${info.players_needed} joueurs`;
-      sub.textContent = `L'événement démarre 7 jours après le ${info.players_needed}e joueur. En attendant, la pré-saison est classée.`;
-      bar.style.width = Math.min(100, (info.players / info.players_needed) * 100) + "%";
-    } else if (info.season === 0) {
+    $("#rank-note").textContent = info.season === 0 ? "Pré-saison · classement mondial" : `Saison ${info.season} · classement mondial du mois`;
+    // Before the event is announced: no card, no player counter.
+    if (!info.threshold_at) return;
+    $("#event-card").hidden = false;
+    if (info.season === 0) {
       const left = new Date(info.event_start).getTime() - now;
       main.textContent = `Début dans ${fmtLeft(left)}`;
-      sub.textContent = `${info.players} joueurs inscrits. La saison 1 commence le ${new Date(info.event_start).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`;
+      sub.textContent = `La saison 1 commence le ${new Date(info.event_start).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`;
       bar.style.width = Math.min(100, (1 - left / (7 * 864e5)) * 100) + "%";
     } else {
       const st = new Date(info.season_start).getTime(), en = new Date(info.season_end).getTime();
       main.textContent = `Saison ${info.season} · fin dans ${fmtLeft(en - now)}`;
-      sub.textContent = "Remise à zéro chaque mois. Épreuve officielle : mode Classique.";
+      sub.textContent = "Total de tous les modes. Remise à zéro chaque mois.";
       bar.style.width = Math.min(100, ((now - st) / (en - st)) * 100) + "%";
     }
-    $("#rank-note").textContent = info.season === 0 ? "Pré-saison · classement mondial" : `Saison ${info.season} · classement mondial du mois`;
     fx.initFrames($("#event-card")); fx.redrawFrames($("#event-card"));
   }
   async function renderWorld(ol) {
@@ -959,24 +1035,62 @@
       $("#event-card").hidden = true;
       return ol.appendChild(emptyRow("Le classement mondial n'est pas encore activé sur cette version."));
     }
-    const req = ++boardReq, mode = rankMode;
+    const req = ++boardReq;
     ol.appendChild(emptyRow("Chargement…"));
     try {
-      const [info, rows] = await Promise.all([NT.online.eventInfo(), NT.online.leaderboard(mode)]);
+      const [info, rows] = await Promise.all([NT.online.eventInfo(), NT.online.overall()]);
       if (req !== boardReq || current !== "ranking") return;
       ol.innerHTML = "";
-      if (info) renderEvent(info);
-      if (!rows || !rows.length) return ol.appendChild(emptyRow(`Personne n'est encore classé en ${MODES[mode].name} ce mois-ci. Termine une partie avec un pseudo pour être le premier.`));
+      if (info) { renderEvent(info); boardSeason = info.season; }
+      if (!rows || !rows.length) return ol.appendChild(emptyRow("Personne n'est encore classé ce mois-ci. Termine une partie pour être le premier."));
       let last = 0;
       rows.forEach((r, k) => {
         if (r.rank > last + 1 && last > 0) { const gap = document.createElement("li"); gap.className = "gap"; gap.textContent = "…"; ol.appendChild(gap); }
-        ol.appendChild(boardRow(r.rank, r.name, `Niveau ${r.level} · ${r.bpm} BPM`, r.score, r.is_me, k));
+        const small = `${r.modes} mode${r.modes > 1 ? "s" : ""} joué${r.modes > 1 ? "s" : ""}${r.is_me ? " · toi" : ""}`;
+        ol.appendChild(boardRow(r.rank, r.name, small, r.total, r.is_me, k, () => openProfile(r)));
         last = r.rank;
       });
     } catch (e) {
       if (req !== boardReq) return;
       ol.innerHTML = "";
       ol.appendChild(emptyRow(e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne." : `Classement indisponible : ${e.message}`));
+    }
+  }
+
+  // Player profile: overall rank and total, then the best score of the season in each mode.
+  let profReq = 0;
+  async function openProfile(row) {
+    const req = ++profReq;
+    $("#prof-name").textContent = row.name;
+    $("#prof-rank").textContent = `${ordinal(row.rank)} au classement mondial`;
+    $("#prof-total").textContent = row.total;
+    $("#prof-sub").textContent = "points au total cette saison";
+    const ul = $("#prof-modes"); ul.innerHTML = "";
+    ul.appendChild(emptyRow("Chargement…"));
+    show("profile");
+    try {
+      const rows = (await NT.online.profile(row.name, boardSeason)) || [];
+      if (req !== profReq || current !== "profile") return;
+      ul.innerHTML = "";
+      const byMode = Object.fromEntries(rows.map((r) => [r.mode, r]));
+      // Played modes first (best score first), then the others.
+      const ids = [...rows.map((r) => r.mode), ...NT.online.GLOBAL_MODES.filter((id) => !byMode[id])];
+      ids.forEach((id, k) => {
+        if (!MODES[id]) return;
+        const r = byMode[id], li = document.createElement("li");
+        li.className = "prof-mode" + (r ? "" : " none"); li.dataset.frame = "sm";
+        li.innerHTML = `<span class="pm-name"></span><span class="pm-info"></span><b class="num pm-score"></b>`;
+        li.querySelector(".pm-name").textContent = MODES[id].name;
+        li.querySelector(".pm-info").textContent = r ? `${ordinal(r.rank)} · niveau ${r.level} · ${r.bpm} BPM` : "Pas encore joué";
+        li.querySelector(".pm-score").textContent = r ? r.score : "—";
+        if (!reduceMotion) li.style.animation = `boot .4s ${Math.min(k, 8) * 40}ms both`;
+        ul.appendChild(li);
+      });
+      fx.initFrames(ul);
+    } catch (e) {
+      if (req !== profReq) return;
+      ul.innerHTML = "";
+      ul.appendChild(emptyRow(e.offline ? "Pas de connexion." : `Profil indisponible : ${e.message}`));
     }
   }
 
@@ -1029,11 +1143,11 @@
     $("#set-latency").textContent = S.calibrated ? `${Math.round(S.latency * 1000)} ms compensés` : "Non calibré";
     $("#app-version").textContent = VERSION;
     const seg = $("#set-track"); seg.innerHTML = "";
-    for (const id of Object.keys(TRACKS)) {
+    for (const id of Object.keys(TRACKS).filter((t) => S.owned.music.includes(t))) { // more in the shop
       const b = document.createElement("button");
       b.textContent = TRACKS[id].name; b.setAttribute("aria-pressed", S.track === id);
       if (TRACKS[id].src && Music.failed[id]) { b.disabled = true; b.title = "Fichier absent de cette version"; }
-      b.onclick = () => { S.track = id; save(); renderSettings(); sfx("ui"); };
+      b.onclick = () => { S.track = id; save(); renderSettings(); sfx("ui"); updateMenuMusic(); }; // the menus switch to it too
       seg.appendChild(b);
     }
     resetArmed = false; $("#btn-reset").textContent = "Effacer"; $("#reset-hint").textContent = "Crédits, records, achats";
@@ -1238,7 +1352,7 @@
     $("#calib-count").textContent = "Écoute…";
     $("#calib-result").textContent = "";
     const c = calib;
-    const track = S.track !== "synth" && (await Music.start(S.track, TRACKS[S.track].bpm));
+    const track = !!TRACKS[S.track].src && (await Music.start(S.track, TRACKS[S.track].bpm));
     if (calib !== c) return; // left the screen meanwhile
     if (track) { calib.mode = "track"; return; }
     // Synth clicks every 600 ms, scheduled on the audio clock.
@@ -1471,11 +1585,60 @@
     try {
       const info = await NT.online.eventInfo(), p = $("#rank-pill");
       if (!info) return;
-      p.hidden = false;
-      p.textContent = !info.threshold_at ? `${info.players}/${info.players_needed}` : info.season === 0 ? "Bientôt" : `Saison ${info.season}`;
+      // No player counter: the pill only appears once the event is announced.
+      p.hidden = !info.threshold_at;
+      p.textContent = info.season === 0 ? "Bientôt" : `Saison ${info.season}`;
     } catch {}
   }
   if (NT.online.enabled) setTimeout(() => NT.online.flush(S.name), 3000);
+  setTimeout(() => $("#splash")?.remove(), 1000); // startup animation is over
+
+  // ---------- update available ----------
+  // The site publishes version.json (written at deploy from VERSION). If it is newer than this
+  // copy, a bar offers « Mettre à jour »: the web app refreshes itself, the Android app downloads
+  // the new APK (published by the GitHub workflow under the « latest » release).
+  const SITE = "https://redless.vercel.app/";
+  const APK_URL = "https://github.com/anonyme5575/redless/releases/download/latest/redless.apk";
+  const newer = (a, b) => {
+    const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+    return false;
+  };
+  let updateTo = null, updateHidden = false, updateAt = 0;
+  async function checkUpdate() {
+    if (Date.now() - updateAt < 60000) return;
+    updateAt = Date.now();
+    try {
+      const base = NT.native() || location.protocol === "file:" ? SITE : "";
+      const res = await fetch(`${base}version.json?t=${Date.now()}`, { cache: "no-store" });
+      const v = res.ok && (await res.json()).version;
+      if (v && newer(v, VERSION)) { updateTo = v; showUpdateBar(); }
+    } catch {}
+  }
+  function showUpdateBar() {
+    const bar = $("#update-bar");
+    bar.hidden = !updateTo || updateHidden || current === "play";
+    if (updateTo) $("#update-text").innerHTML = `Nouvelle version <b>${updateTo}</b> disponible`;
+  }
+  $("#btn-update-close").onclick = () => { updateHidden = true; showUpdateBar(); };
+  $("#btn-update").onclick = async () => {
+    const n = NT.native();
+    if (n) {
+      if (n.openUrl) { n.openUrl(APK_URL); toast("Téléchargement de la nouvelle version…"); }
+      else toast("Télécharge la nouvelle version sur " + SITE);
+      return;
+    }
+    $("#btn-update").disabled = true; $("#update-text").textContent = "Mise à jour…";
+    try {
+      // Drop the offline copy, fetch the new service worker, then reload from the server.
+      const keys = await caches.keys(); await Promise.all(keys.map((k) => caches.delete(k)));
+      const reg = await navigator.serviceWorker?.getRegistration(); if (reg) await reg.update();
+    } catch {}
+    location.reload();
+  };
+  setTimeout(checkUpdate, 2500);
+  setInterval(checkUpdate, 15 * 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 
   // ---------- boot ----------
   applyLook();

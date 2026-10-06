@@ -1,7 +1,7 @@
 // Offline support for the installed web app (iPhone "Sur l'écran d'accueil", Android Chrome).
 // Core files are cached at install; everything else (music included) on first use.
 // The music is served from cache with byte ranges, because Safari streams audio with Range requests.
-const CACHE = "redless-v2.6";
+const CACHE = "redless-v3.1";
 const CORE = [
   "./", "index.html", "manifest.webmanifest", "css/style.css",
   "js/config.js", "js/online-config.js", "js/online.js", "js/audio.js", "js/visuals.js", "js/game.js",
@@ -35,6 +35,7 @@ async function rangeResponse(request, full) {
 self.addEventListener("fetch", (e) => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin) return;
+  if (url.pathname.endsWith("/version.json")) return; // always asked to the server: it announces updates
   const isAudio = url.pathname.endsWith(".mp3");
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
