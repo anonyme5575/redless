@@ -551,6 +551,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .modal-card { display: grid; gap: 10px; padding: 14px; width: min(360px, 100%); }
 .modal-card img { width: 100%; height: auto; display: block; user-select: auto; -webkit-user-select: auto; -webkit-touch-callout: default; }
 #tuto-step { white-space: nowrap; min-width: 52px; }
+.note.credits { text-transform: none; letter-spacing: .02em; line-height: 1.5; }
 @media (max-height: 700px) {
   #menu .menu-hero { display: none; }
   #menu { gap: 8px; }

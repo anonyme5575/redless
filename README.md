@@ -61,6 +61,10 @@ Le wrapper (`android/src/.../MainActivity.java`) fournit le plein écran, le bou
 
 Publication : voir **`PUBLISHING.md`**. Tests sur téléphone : **`TESTS.md`**. Confidentialité : **`PRIVACY.md`**. Fiche du Store : **`store/`**.
 
+## Droits
+
+Redless © 2026 anonyme5575, tous droits réservés. La musique « Sync or Die » est une œuvre originale protégée : aucune réutilisation sans autorisation écrite. Détails dans [`COPYRIGHT.md`](COPYRIGHT.md).
+
 ## Structure
 
 ```

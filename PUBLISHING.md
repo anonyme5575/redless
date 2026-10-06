@@ -1,7 +1,7 @@
 # Publier sur le Play Store
 
 ## 1. Avant tout
-- **Droits de la musique.** « Sync or Die » ne peut être publiée qu'avec une licence de diffusion. Sans licence, construire avec `NO_LICENSED_MUSIC=1` : le jeu utilise alors sa piste Synthé, générée en direct.
+- **Droits de la musique.** « Sync or Die » est ton œuvre (voir `COPYRIGHT.md`) : tu peux la publier. Garde une preuve datée de sa création (fichiers de projet, export daté, ou dépôt e-Soleau à l'INPI). Si le morceau a été fait avec un outil d'IA, vérifie les conditions de l'outil : sur certaines offres gratuites, les droits appartiennent à l'outil. Pour publier sans le morceau : `NO_LICENSED_MUSIC=1` (piste Synthé).
 - **Tests sur téléphone** : voir `TESTS.md`.
 
 ## 2. Clé de publication (une seule fois, sur ton ordinateur)
