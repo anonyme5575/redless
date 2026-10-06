@@ -40,11 +40,11 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 - **Crédits** = score ÷ 5 + bonus. Boutique : 6 thèmes, 5 effets, 5 formes, à essayer avant d'acheter.
 - **Missions** : 3 par jour (tirées d'une liste de 14), crédits à la clé.
 - **Rangs** selon les points de carrière (somme des scores) : Recrue, Cadet, Pilote, Vétéran, Élite, Spectre, Légende.
-- **Classement** local par mode, **partage** du score en image (1080×1350).
+- **Partage** du score en image (1080×1350). Le classement est uniquement mondial (voir plus bas).
 
 ## Classement mondial et événement
 
-Via Supabase (offre gratuite) : un pseudo, un identifiant anonyme par téléphone, des scores contrôlés côté serveur.
+Via Supabase (offre gratuite) : un pseudo, un identifiant anonyme par téléphone, des scores contrôlés côté serveur. En option, le joueur **protège son compte** avec son e-mail (code reçu par e-mail, sans mot de passe) : sa progression est sauvegardée en ligne et il la retrouve sur un autre téléphone.
 L'**événement** démarre **7 jours après le 30e joueur**, puis le classement **repart de zéro chaque mois** (saison 1, 2, 3…). Épreuve officielle : mode Classique ; chaque mode a son classement mensuel. Avant l'événement : pré-saison.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 

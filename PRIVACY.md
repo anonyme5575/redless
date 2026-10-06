@@ -2,14 +2,21 @@
 
 Dernière mise à jour : 6 octobre 2026
 
-**Redless ne collecte ni nom, ni e-mail, ni contact, ni position, ni publicité.**
+**Redless ne collecte ni nom, ni contact, ni position, ni publicité. L'adresse e-mail est facultative.**
 
 ## Ce qui reste sur ton appareil
-Crédits, records locaux, réglages, progression des missions : stockés uniquement sur l'appareil.
+Crédits, records, réglages, progression des missions : stockés sur l'appareil, sauf si tu protèges ton compte (ci-dessous).
+
+## Compte protégé par e-mail (facultatif)
+Dans Réglages → Compte → « Protéger », tu peux lier une adresse e-mail à ton compte. Le serveur du jeu (Supabase, Union européenne) enregistre alors :
+- ton **adresse e-mail**, utilisée uniquement pour t'envoyer un code à usage unique quand tu veux retrouver ton compte (aucune publicité, aucun partage) ;
+- une **sauvegarde de ta progression** : crédits, achats, records, missions, pseudo. Les volumes, les vibrations et le calibrage restent sur l'appareil.
+
+Pas de mot de passe : chaque connexion se fait avec un code envoyé par e-mail.
 
 ## Classement mondial
 Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, hébergé dans l'Union européenne) :
-- un **identifiant anonyme** créé pour ton appareil (pas de compte, pas d'e-mail) ;
+- un **identifiant anonyme** créé pour ton appareil (sans e-mail, sauf si tu protèges ton compte) ;
 - ton **pseudo**, visible des autres joueurs ;
 - pour chaque partie : **mode, score, niveau, tempo, durée**, date d'envoi.
 
@@ -27,7 +34,7 @@ L'image est créée sur ton appareil et transmise seulement à l'application que
 
 ## Suppression
 - Sur l'appareil : Réglages → Progression → Effacer, ou désinstaller le jeu.
-- Sur le serveur : ouvre une demande sur https://github.com/anonyme5575/redless en indiquant ton pseudo. Tes scores et ton pseudo sont supprimés sous 30 jours.
+- Sur le serveur : ouvre une demande sur https://github.com/anonyme5575/redless en indiquant ton pseudo. Tes scores, ton pseudo, ton adresse e-mail et ta sauvegarde en ligne sont supprimés sous 30 jours.
 
 ## Enfants
 Le jeu ne demande aucune donnée d'identité. Le pseudo ne doit pas contenir ton vrai nom.

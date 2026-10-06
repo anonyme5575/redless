@@ -31,7 +31,13 @@ Ces deux valeurs sont **publiques par conception** : elles sont dans le jeu et n
 **Ne copie jamais** la clé `service_role` / `sb_secret_…` ni le mot de passe de la base.
 
 ## 5. Les mettre dans le jeu
-Dans [`js/online-config.js`](../js/online-config.js) :
+**Le plus simple (Windows)** : double-clic sur **`connecter-supabase.cmd`** à la racine du projet. Colle l'adresse et la clé (ou tout le texte copié depuis Supabase, il trie), le script vérifie chaque étape, te dit quoi corriger, propose de copier `schema.sql` si les tables manquent, puis écrit `js/online-config.js`.
+
+**Pour tester sur ton téléphone sans rien reconstruire** : dans le jeu, **Réglages → Serveur du classement** :
+- **Tester** vérifie la connexion point par point (adresse, clé, connexion anonyme, tables) et explique comment réparer ;
+- **Modifier** permet de coller une autre adresse/clé. Elle n'est gardée que sur ce téléphone ; **Par défaut** revient à celle du jeu.
+
+À la main, dans [`js/online-config.js`](../js/online-config.js) :
 ```js
 window.REDLESS_ONLINE = {
   url: "https://xxxxxxxx.supabase.co",
@@ -58,6 +64,47 @@ Garde-fous :
 
 Pour changer l'adresse ou le plafond : fonction `redless_install_settings()` dans `schema.sql`.
 Pour changer la clé : `select vault.update_secret((select id from vault.secrets where name = 'resend_api_key'), 're_NOUVELLE_CLE');`
+
+## 7. Comptes protégés par e-mail (récupérer son compte)
+Dans le jeu, **Réglages → Compte** :
+- **Protéger** : le joueur tape son adresse e-mail, reçoit un **code**, le recopie. Son compte est lié à l'adresse et sa progression (crédits, achats, records, missions, pseudo) est **sauvegardée en ligne** automatiquement.
+- **Retrouver** : sur un autre téléphone (ou après « Effacer »), il tape la même adresse, reçoit un code, et récupère tout : pseudo, scores mondiaux et progression.
+
+Pas de mot de passe : un nouveau code à chaque fois. À régler **une seule fois** :
+
+**a. Relancer `schema.sql`** dans le SQL Editor (il ajoute la table `saves`).
+
+**b. Envoi des e-mails (SMTP).** Le service d'e-mail intégré de Supabase n'écrit qu'aux membres de ton équipe Supabase : il faut le tien. Le plus simple, avec Gmail (gratuit, environ 500 e-mails par jour) :
+1. Compte Google **scalariapp@gmail.com** → **Sécurité** → active la **validation en deux étapes**.
+2. Cherche **« Mots de passe des applications »** → crée-en un nommé `Supabase` → copie les 16 lettres.
+3. Supabase → **Authentication → Emails → SMTP Settings** → **Enable Custom SMTP** :
+   - Sender email : `scalariapp@gmail.com` — Sender name : `Redless`
+   - Host : `smtp.gmail.com` — Port : `465`
+   - Username : `scalariapp@gmail.com` — Password : les 16 lettres
+   - **Save**.
+
+(Resend ne convient pas ici sans nom de domaine à toi : il n'écrit qu'à ta propre adresse.)
+
+**c. Mettre le code dans les e-mails.** Supabase → **Authentication → Emails → Templates** :
+- **Magic Link** (sert à « Retrouver ») : sujet `Ton code Redless`, message :
+  ```html
+  <h2>Redless</h2>
+  <p>Ton code pour retrouver ton compte : <b style="font-size:24px">{{ .Token }}</b></p>
+  <p>Valable 1 heure. Si tu n'as rien demandé, ignore cet e-mail.</p>
+  ```
+- **Change Email Address** (sert à « Protéger ») : sujet `Ton code Redless`, message :
+  ```html
+  <h2>Redless</h2>
+  <p>Ton code pour protéger ton compte : <b style="font-size:24px">{{ .Token }}</b></p>
+  <p>Valable 1 heure. Si tu n'as rien demandé, ignore cet e-mail.</p>
+  ```
+- **Save** pour chacun.
+
+**d. Vérifier** : **Authentication → Sign In / Providers → Email** doit être activé (il l'est par défaut), tout comme **Allow anonymous sign-ins** (étape 3).
+
+Test : sur ton téléphone, **Réglages → Compte → Protéger**, puis **Effacer la progression**, puis **Retrouver** avec la même adresse : tes crédits reviennent.
+
+Les comptes protégés apparaissent dans **Authentication → Users** (avec leur e-mail) ; leurs sauvegardes dans **Table Editor → `saves`**.
 
 ## Fonctionnement
 | Règle | Où |

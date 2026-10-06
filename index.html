@@ -169,10 +169,6 @@
       <h2>Classement</h2>
       <span class="spacer"></span>
     </div>
-    <div class="seg view-seg" id="rank-view">
-      <button data-view="world" aria-pressed="true">Mondial</button>
-      <button data-view="local" aria-pressed="false">Cet appareil</button>
-    </div>
     <div class="event-card" id="event-card" data-frame="sm" hidden>
       <span class="label" id="event-title">Événement mondial</span>
       <b class="event-main" id="event-main"></b>
@@ -181,7 +177,7 @@
     </div>
     <div class="tabs" role="tablist" id="rank-tabs"></div>
     <ol class="board-list" id="board-list"></ol>
-    <p class="note" id="rank-note">Classement enregistré sur cet appareil</p>
+    <p class="note" id="rank-note">Classement mondial</p>
   </section>
 
   <!-- MISSIONS -->
@@ -240,13 +236,40 @@
       <div class="set-row"><span>Pseudo<small>Affiché au classement mondial</small></span>
         <span class="name-set"><input id="set-name" maxlength="14" placeholder="—" autocomplete="nickname" aria-label="Pseudo"><button class="btn small" type="submit" data-frame="sm">OK</button></span></div>
     </form>
+    <div class="set-group" id="acct-group" data-frame="sm">
+      <div class="set-row"><span>Compte<small id="acct-status">Non protégé</small></span>
+        <span class="name-set"><button class="btn small" id="btn-acct-protect" data-frame="sm">Protéger</button><button class="btn small" id="btn-acct-recover" data-frame="sm">Retrouver</button></span></div>
+      <form class="srv-form" id="acct-form" hidden>
+        <p class="srv-help" id="acct-help"></p>
+        <input id="acct-email" type="email" inputmode="email" placeholder="ton.adresse@mail.com" autocomplete="email" autocapitalize="off" spellcheck="false" aria-label="Adresse e-mail">
+        <input id="acct-code" inputmode="numeric" autocomplete="one-time-code" placeholder="Code reçu par e-mail" maxlength="10" aria-label="Code reçu par e-mail" hidden>
+        <span class="name-set">
+          <button class="btn small" type="submit" id="btn-acct-go" data-frame="sm">Envoyer le code</button>
+          <button class="btn small" type="button" id="btn-acct-cancel" data-frame="sm">Annuler</button>
+        </span>
+      </form>
+    </div>
+    <div class="set-group" data-frame="sm">
+      <div class="set-row"><span>Serveur du classement<small id="srv-status">—</small></span>
+        <span class="name-set"><button class="btn small" id="btn-srv-test" data-frame="sm">Tester</button><button class="btn small" id="btn-srv-edit" data-frame="sm">Modifier</button></span></div>
+      <ul class="srv-steps" id="srv-steps" hidden></ul>
+      <form class="srv-form" id="srv-form" hidden>
+        <p class="srv-help">Supabase → Project Settings → API. Colle l'adresse du projet et la clé <b>publishable</b> (ou anon). Tu peux tout coller dans la première case : le jeu trie.</p>
+        <input id="srv-url" placeholder="https://xxxx.supabase.co" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Adresse du projet Supabase">
+        <input id="srv-key" placeholder="sb_publishable_…" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Clé publique Supabase">
+        <span class="name-set">
+          <button class="btn small" type="submit" data-frame="sm">Tester et enregistrer</button>
+          <button class="btn small" type="button" id="btn-srv-default" data-frame="sm">Par défaut</button>
+        </span>
+      </form>
+    </div>
     <div class="set-group" data-frame="sm">
       <div class="set-row"><span>Décalage audio<small id="set-latency">Non calibré</small></span><button class="btn small" id="btn-calib" data-frame="sm">Calibrer</button></div>
       <div class="set-row"><span>Tutoriel</span><button class="btn small" id="btn-tuto" data-frame="sm">Revoir</button></div>
       <div class="set-row"><span>Confidentialité</span><button class="btn small" id="btn-privacy" data-frame="sm">Lire</button></div>
       <div class="set-row"><span>Progression<small id="reset-hint">Crédits, records, achats</small></span><button class="btn small danger" id="btn-reset" data-frame="sm">Effacer</button></div>
     </div>
-    <p class="note">Version <span id="app-version">2.5</span></p>
+    <p class="note">Version <span id="app-version">2.6</span></p>
     <p class="note credits">Musique : « Sync or Die » © 2026 anonyme5575. Tous droits réservés, reproduction interdite sans autorisation.<br>Redless © 2026 anonyme5575.</p>
   </section>
 
@@ -289,8 +312,9 @@
       <span class="spacer"></span>
     </div>
     <div class="prose">
-      <p><b>Redless ne collecte ni nom, ni e-mail, ni contact, ni position.</b></p>
-      <p>Ta progression (crédits, records, réglages) reste sur ton appareil.</p>
+      <p><b>Redless ne collecte ni nom, ni contact, ni position. L'adresse e-mail est facultative.</b></p>
+      <p>Ta progression (crédits, records, réglages) reste sur ton appareil, sauf si tu protèges ton compte.</p>
+      <p><b>Compte protégé (facultatif).</b> Si tu touches « Protéger » dans les Réglages, ton adresse e-mail est enregistrée sur le serveur du jeu (Supabase, Union européenne). Elle sert uniquement à t'envoyer un code pour retrouver ton compte, jamais à de la publicité. Ta progression (crédits, achats, records, missions) est alors sauvegardée en ligne. Les volumes, vibrations et le calibrage restent sur l'appareil.</p>
       <p><b>Classement mondial.</b> Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, hébergé dans l'Union européenne) : ce pseudo, tes scores, ton niveau, ton tempo et la durée de tes parties, rattachés à un identifiant anonyme créé pour ton appareil. Ces données servent uniquement au classement. Le pseudo est visible des autres joueurs.</p>
       <p><b>Installation.</b> Au premier lancement de l'application installée, le jeu envoie une seule fois un signal anonyme : un identifiant aléatoire, la plateforme (Android, iPhone, web) et la version. Il sert uniquement à compter les installations.</p>
       <p>Pas de publicité, pas d'outil de mesure d'audience. Le jeu fonctionne sans connexion ; les scores sont envoyés au retour du réseau.</p>

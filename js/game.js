@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.5";
+  const VERSION = "2.6";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -11,7 +11,7 @@
     coins: 0, bests: {}, games: 0, name: "", mode: "classic",
     owned: { skin: ["minuit"], fx: ["eclats"], shape: ["carre"] },
     equipped: { skin: "minuit", fx: "eclats", shape: "carre" },
-    scores: [], sound: true,
+    sound: true,
     musicVol: 0.9, sfxVol: 0.8, vibration: true, colorblind: false, track: "sync",
     latency: 0, calibrated: false, tutorialDone: false, xp: 0,
     daily: { date: "", score: null, best: 0 }, missions: { date: "", list: [] }, duels: {},
@@ -26,16 +26,18 @@
         owned: { ...defaults.owned, ...s.owned }, equipped: { ...defaults.equipped, ...s.equipped } };
       // Older saves: one global best, mode-less scores, no tutorial flag.
       if (typeof s.best === "number" && !out.bests.classic) out.bests.classic = s.best;
-      out.scores.forEach((e) => (e.mode = e.mode || "classic"));
+      const oldScores = Array.isArray(s.scores) ? s.scores : [];
       if (!MODES[out.mode] || MODES[out.mode].hidden) out.mode = "classic";
       if (s.tutorialDone === undefined && out.games > 0) out.tutorialDone = true;
-      if (s.xp === undefined) out.xp = out.scores.reduce((a, e) => a + e.score, 0);
+      if (s.xp === undefined) out.xp = oldScores.reduce((a, e) => a + (e.score || 0), 0);
+      delete out.scores; // the local leaderboard is gone: only the world one remains
       if (!TRACKS[out.track]) out.track = "sync";
       out.sound = true; // the mute button is gone: volumes are set in Réglages
       return out;
     } catch { return clone(defaults); }
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
+  let pushTimer = 0;
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} schedulePush(); }
   const S = load();
   NT.S = S;
 
@@ -666,8 +668,8 @@
     const ul = $("#over-missions"); ul.innerHTML = ""; ul.hidden = !done.length;
     done.forEach((m) => { const li = document.createElement("li"); li.textContent = `Mission accomplie : ${m.text}`; const b = document.createElement("b"); b.textContent = `+${m.reward}`; li.appendChild(b); ul.appendChild(li); });
     const form = $("#name-form"), input = $("#name-input");
-    form.hidden = G.score === 0 || G.modeId === "duel";
-    form.dataset.saved = "";
+    // Pseudo asked once, for the world leaderboard (changed later in Réglages).
+    form.hidden = !!S.name || !NT.online.enabled || !NT.online.GLOBAL_MODES.includes(G.modeId) || G.score === 0;
     input.value = S.name;
     clearTiles();
     bindAll();
@@ -675,8 +677,6 @@
     countUp($("#over-score"), G.score);
     if (rk.i > rankBefore.i) setTimeout(() => toast(`Nouveau rang : ${rk.name}`), 900);
     else if (done.length) setTimeout(() => toast(`${done.length} mission${done.length > 1 ? "s" : ""} accomplie${done.length > 1 ? "s" : ""}`), 900);
-    // Auto-save under the last pseudo, so a quick "Rejouer" still records the score.
-    if (S.name && G.score > 0 && G.modeId !== "duel") recordScore(S.name);
     onlineSubmit(run);
   }
   // ---------- world leaderboard ----------
@@ -698,33 +698,17 @@
     } catch (e) {
       el.className = "over-online bad";
       el.textContent = `Classement mondial : ${e.message}.`;
-      if (/pseudo/.test(e.message)) unsentRun = run;
+      if (/pseudo/.test(e.message)) { unsentRun = run; $("#name-form").hidden = false; }
     }
-  }
-  function recordScore(name) {
-    const form = $("#name-form");
-    if (form.dataset.saved) {
-      const prev = S.scores.find((s) => s.date === +form.dataset.saved);
-      if (prev) prev.name = name;
-    } else {
-      const entry = { name, score: G.score, level: G.level, mode: G.modeId, date: Date.now() };
-      S.scores.push(entry);
-      form.dataset.saved = entry.date;
-    }
-    S.scores.sort((a, b) => b.score - a.score);
-    const kept = [], count = {};
-    for (const s of S.scores) if ((count[s.mode] = (count[s.mode] || 0) + 1) <= 15) kept.push(s);
-    S.scores = kept;
-    S.name = name; save();
   }
   $("#name-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const name = $("#name-input").value.trim().slice(0, 14);
     if (!name) return toast("Écris un pseudo d'abord");
     const changed = name !== S.name;
-    recordScore(name);
+    S.name = name; save();
     $("#name-input").blur();
-    toast("Score enregistré");
+    toast("Pseudo enregistré");
     if (unsentRun) onlineSubmit(unsentRun);
     else if (changed && NT.online.enabled) NT.online.rename(name).catch((e) => !e.offline && toast(e.message));
   });
@@ -917,9 +901,7 @@
   }
 
   // ---------- leaderboard ----------
-  let rankMode = "classic";
-  let rankView = NT.online.enabled ? "world" : "local", boardReq = 0;
-  document.querySelectorAll("#rank-view button").forEach((b) => (b.onclick = () => { rankView = b.dataset.view; if (rankView === "world" && rankMode === "daily") rankMode = "classic"; renderBoard(); }));
+  let rankMode = "classic", boardReq = 0;
   function boardRow(rank, name, small, score, me, k) {
     const li = document.createElement("li");
     if (me) li.className = "me";
@@ -933,26 +915,17 @@
   }
   function emptyRow(text) { const li = document.createElement("li"); li.className = "empty"; li.textContent = text; return li; }
   function renderBoard() {
-    document.querySelectorAll("#rank-view button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === rankView));
-    const world = rankView === "world";
     const tabs = $("#rank-tabs"); tabs.innerHTML = "";
-    for (const id of world ? MODE_IDS : [...MODE_IDS, "daily"]) {
+    for (const id of MODE_IDS) {
       const t = document.createElement("button");
       t.className = "tab"; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", id === rankMode);
-      t.textContent = id === "daily" ? "Défi" : MODES[id].name;
+      t.textContent = MODES[id].name;
       t.onclick = () => { rankMode = id; renderBoard(); };
       tabs.appendChild(t);
     }
-    $("#event-card").hidden = !world;
+    $("#event-card").hidden = false;
     const ol = $("#board-list"); ol.innerHTML = "";
-    if (world) return renderWorld(ol);
-    $("#rank-note").textContent = "Classement enregistré sur cet appareil";
-    const rows = S.scores.filter((s) => s.mode === rankMode).slice(0, 10);
-    if (!rows.length) return ol.appendChild(emptyRow(`Aucun score en ${MODES[rankMode].name} pour l'instant. Termine une partie et enregistre ton pseudo pour entrer au classement.`));
-    rows.forEach((s, k) => {
-      const d = new Date(s.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-      ol.appendChild(boardRow(k + 1, s.name, `Niveau ${s.level} · ${d}`, s.score, s.name === S.name, k));
-    });
+    renderWorld(ol);
   }
   const fmtLeft = (ms) => {
     const h = Math.max(0, Math.floor(ms / 3600000)), d = Math.floor(h / 24);
@@ -986,7 +959,7 @@
       $("#event-card").hidden = true;
       return ol.appendChild(emptyRow("Le classement mondial n'est pas encore activé sur cette version."));
     }
-    const req = ++boardReq, mode = rankMode === "daily" ? "classic" : rankMode;
+    const req = ++boardReq, mode = rankMode;
     ol.appendChild(emptyRow("Chargement…"));
     try {
       const [info, rows] = await Promise.all([NT.online.eventInfo(), NT.online.leaderboard(mode)]);
@@ -1064,7 +1037,156 @@
       seg.appendChild(b);
     }
     resetArmed = false; $("#btn-reset").textContent = "Effacer"; $("#reset-hint").textContent = "Crédits, records, achats";
+    renderServer();
+    renderAccount();
   }
+
+  // ---------- account protected by e-mail + online save of the progress ----------
+  // Device settings stay on the phone; everything else (credits, purchases, records…) is saved.
+  const LOCAL_ONLY = ["musicVol", "sfxVol", "vibration", "latency", "calibrated"];
+  const PUSHED = "redless-pushed";
+  const pushedAt = () => { try { return +localStorage.getItem(PUSHED) || 0; } catch { return 0; } };
+  const setPushed = (t) => { try { localStorage.setItem(PUSHED, String(t)); } catch {} };
+  function cloudData() { const d = clone(S); LOCAL_ONLY.forEach((k) => delete d[k]); return d; }
+  function schedulePush(delay = 15000) {
+    if (!NT.online.enabled || !NT.online.email()) return;
+    clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, delay);
+  }
+  async function pushNow() {
+    clearTimeout(pushTimer); pushTimer = 0;
+    if (!NT.online.enabled || !NT.online.email()) return false;
+    try { await NT.online.pushSave(cloudData()); setPushed(Date.now()); return true; }
+    catch { return false; }
+    finally { if (current === "settings" && $("#acct-form").hidden) renderAccount(); }
+  }
+  // Leaving the app: send what is waiting.
+  document.addEventListener("visibilitychange", () => { if (document.hidden && pushTimer) pushNow(); });
+  // Replaces this phone's progress with the account's online save. False if there is none yet.
+  async function restoreFromCloud() {
+    const r = await NT.online.pullSave();
+    if (!r || !r.data) { await pushNow(); return false; }
+    clearTimeout(pushTimer); pushTimer = 0;
+    const device = {}; LOCAL_ONLY.forEach((k) => (device[k] = S[k]));
+    try { localStorage.setItem(KEY, JSON.stringify({ ...r.data, ...device })); } catch {}
+    setPushed(new Date(r.updated_at).getTime());
+    return true;
+  }
+
+  const maskEmail = (m) => m.replace(/^(.)[^@]*/, (_, a) => a + "•••");
+  const clock = (t) => new Date(t).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  let acct = null; // { mode: "link" | "login", step: "email" | "code", email }
+  function renderAccount() {
+    const on = NT.online.enabled;
+    $("#acct-group").hidden = !on;
+    if (!on) return;
+    const mail = NT.online.email();
+    $("#acct-status").textContent = mail
+      ? `Protégé : ${maskEmail(mail)} · ${pushedAt() ? "sauvegardé le " + clock(pushedAt()) : "pas encore sauvegardé"}`
+      : "Non protégé";
+    $("#btn-acct-protect").textContent = mail ? "Sauvegarder" : "Protéger";
+    acct = null; $("#acct-form").hidden = true;
+  }
+  function acctStep(mode, step, email = "") {
+    acct = { mode, step, email };
+    const f = $("#acct-form"); f.hidden = false;
+    const code = step === "code";
+    $("#acct-email").hidden = code; $("#acct-code").hidden = !code;
+    $("#acct-code").value = "";
+    $("#btn-acct-go").textContent = code ? "Valider" : "Envoyer le code";
+    $("#acct-help").textContent = code
+      ? `Code envoyé à ${email}. Regarde aussi dans les spams. Le code est valable 1 heure.`
+      : mode === "link"
+        ? "Ton adresse e-mail : tu recevras un code. Plus tard, sur n'importe quel téléphone, un nouveau code suffira pour retrouver ta progression. Pas de mot de passe."
+        : "L'adresse de ton compte. Attention : la progression de CE téléphone sera remplacée par celle du compte.";
+    (code ? $("#acct-code") : $("#acct-email")).focus();
+  }
+  $("#btn-acct-protect").onclick = async () => {
+    if (!NT.online.email()) return acctStep("link", "email");
+    toast((await pushNow()) ? "Progression sauvegardée" : "Sauvegarde impossible pour l'instant");
+  };
+  $("#btn-acct-recover").onclick = () => acctStep("login", "email");
+  $("#btn-acct-cancel").onclick = () => renderAccount();
+  let acctBusy = false;
+  $("#acct-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!acct || acctBusy) return;
+    acctBusy = true; $("#btn-acct-go").disabled = true;
+    try {
+      if (acct.step === "email") {
+        const mail = $("#acct-email").value.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return toast("Adresse e-mail invalide");
+        if (acct.mode === "link") await NT.online.linkEmail(mail); else await NT.online.sendLogin(mail);
+        acctStep(acct.mode, "code", mail);
+        return;
+      }
+      const code = $("#acct-code").value.replace(/\D/g, "");
+      if (code.length < 6) return toast("Le code fait au moins 6 chiffres");
+      if (acct.mode === "link") {
+        await NT.online.confirmLink(acct.email, code);
+        await pushNow();
+        renderAccount();
+        toast("Compte protégé");
+      } else {
+        await NT.online.confirmLogin(acct.email, code);
+        const found = await restoreFromCloud();
+        toast(found ? "Compte retrouvé" : "Compte retrouvé (pas encore de sauvegarde en ligne)");
+        if (found) setTimeout(() => location.reload(), 900); else renderAccount();
+      }
+    } catch (err) {
+      toast(err.offline ? "Pas de connexion" : err.message);
+    } finally { acctBusy = false; $("#btn-acct-go").disabled = false; }
+  });
+
+  // ---------- leaderboard server (Supabase): status, test, change for this device ----------
+  function renderServer() {
+    const o = NT.online;
+    $("#srv-status").textContent = !o.enabled ? "Non configuré"
+      : o.url.replace(/^https:\/\//, "").replace(/\.supabase\.co$/, "") + (o.custom ? " (réglé ici)" : "");
+    $("#srv-steps").hidden = true;
+    $("#srv-form").hidden = true;
+  }
+  function showSteps(res) {
+    const ul = $("#srv-steps"); ul.innerHTML = ""; ul.hidden = false;
+    for (const s of res.steps) {
+      const li = document.createElement("li");
+      li.className = s.ok ? "ok" : "bad"; li.append(s.text);
+      if (s.fix) { const sm = document.createElement("small"); sm.textContent = s.fix; li.appendChild(sm); }
+      ul.appendChild(li);
+    }
+  }
+  async function testServer(url, key) {
+    const ul = $("#srv-steps"); ul.hidden = false; ul.innerHTML = "<li>Test en cours…</li>";
+    const res = await NT.online.check(url, key);
+    showSteps(res);
+    return res;
+  }
+  $("#btn-srv-test").onclick = () => testServer();
+  $("#btn-srv-edit").onclick = () => {
+    const f = $("#srv-form"); f.hidden = !f.hidden;
+    if (!f.hidden) { $("#srv-url").value = NT.online.url; $("#srv-key").value = NT.online.key; }
+  };
+  // Pasting everything in the first box (dashboard text, .env…) fills both boxes.
+  $("#srv-url").addEventListener("input", (e) => {
+    const p = NT.online.parseServer(e.target.value);
+    if (p.secret) { toast("Clé SECRÈTE détectée : ne l'utilise pas"); }
+    if (p.key) $("#srv-key").value = p.key;
+    if (p.url && p.url !== e.target.value) e.target.value = p.url;
+  });
+  $("#srv-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const p = NT.online.parseServer($("#srv-url").value + " " + $("#srv-key").value);
+    const url = p.url || $("#srv-url").value.trim(), key = p.key || $("#srv-key").value.trim();
+    const res = await testServer(url, key);
+    if (!res.ok) return toast("Pas enregistré : corrige le point en rouge");
+    NT.online.setServer({ url, key });
+    toast("Serveur enregistré");
+    setTimeout(() => location.reload(), 900);
+  });
+  $("#btn-srv-default").onclick = () => {
+    NT.online.setServer(null);
+    toast("Serveur du jeu rétabli");
+    setTimeout(() => location.reload(), 900);
+  };
   $("#name-set-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = $("#set-name").value.trim().slice(0, 14);
@@ -1090,6 +1212,8 @@
       clearTimeout(resetTimer); resetTimer = setTimeout(() => current === "settings" && renderSettings(), 4000);
       return;
     }
+    clearTimeout(pushTimer);
+    NT.online.logout(); // the protected account keeps its online save: « Retrouver » brings it back
     try { localStorage.removeItem(KEY); } catch {}
     location.reload();
   };

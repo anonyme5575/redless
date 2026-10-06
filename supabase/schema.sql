@@ -3,7 +3,8 @@
 -- À coller tel quel dans Supabase → SQL Editor → Run. Ré-exécutable.
 --
 -- Règles :
---   * Chaque joueur est un utilisateur anonyme Supabase (aucun e-mail).
+--   * Chaque joueur est un utilisateur anonyme Supabase. Il peut, s'il le
+--     veut, lier une adresse e-mail pour retrouver son compte (code par e-mail).
 --   * L'événement démarre 7 jours après l'inscription du 30e joueur.
 --   * Pendant l'événement, le classement repart de zéro chaque mois
 --     (saison 1 = 1er mois après le début, saison 2 = mois suivant…).
@@ -271,3 +272,47 @@ end $$;
 
 revoke all on function public.register_install(uuid, text, text) from public;
 grant execute on function public.register_install(uuid, text, text) to anon, authenticated;
+
+-- =====================================================================
+-- Comptes protégés par e-mail : sauvegarde en ligne de la progression
+-- (crédits, achats, records, missions…). Seuls les comptes liés à une
+-- adresse e-mail peuvent sauvegarder : un compte anonyme ne pourrait
+-- de toute façon pas être retrouvé. Voir supabase/README.md, « Comptes ».
+-- =====================================================================
+create table if not exists public.saves (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.saves enable row level security;
+revoke all on public.saves from anon, authenticated;
+
+create or replace function public.save_progress(p_data jsonb)
+returns timestamptz
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  t timestamptz := now();
+begin
+  if uid is null then raise exception 'Connexion requise'; end if;
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'Protège d''abord ton compte avec ton adresse e-mail';
+  end if;
+  if p_data is null or jsonb_typeof(p_data) <> 'object' or octet_length(p_data::text) > 200000 then
+    raise exception 'Sauvegarde invalide';
+  end if;
+  insert into saves (user_id, data, updated_at) values (uid, p_data, t)
+  on conflict (user_id) do update set data = excluded.data, updated_at = t;
+  return t;
+end $$;
+
+create or replace function public.load_progress()
+returns table (data jsonb, updated_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select s.data, s.updated_at from saves s where s.user_id = auth.uid()
+$$;
+
+revoke all on function public.save_progress(jsonb) from public, anon;
+revoke all on function public.load_progress() from public, anon;
+grant execute on function public.save_progress(jsonb) to authenticated;
+grant execute on function public.load_progress() to authenticated;
