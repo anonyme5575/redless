@@ -1,4 +1,6 @@
-# Ne touche pas le rouge
+# Redless
+
+*Redless* = « sans rouge » en anglais.
 
 Jeu mobile en portrait, jouable à un doigt, avec une interface de cockpit holographique. Touche les cases vertes, jamais les rouges. Les cases tombent sur les temps de la musique, et la musique accélère sans arrêt.
 
@@ -6,8 +8,9 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 
 ## Jouer
 
-- **Android** : installer `dist/ne-touche-pas-le-rouge.apk` (ou l'artefact du workflow « APK » dans l'onglet Actions).
-- **Navigateur** : `python3 -m http.server 8000` puis http://localhost:8000.
+- **Android** : installer `dist/redless.apk` (ou l'artefact du workflow « APK » dans l'onglet Actions).
+- **iPhone / iPad** : ouvrir le site (déployé sur Vercel) dans **Safari**, puis **Partager → Sur l'écran d'accueil**. Redless s'installe comme une appli : plein écran, icône, fonctionne hors ligne (`sw.js`), le son joue même en mode silencieux (iOS 16.4+). Seule limite : Safari ne donne pas accès au vibreur.
+- **Navigateur** : `python3 -m http.server 8000` puis http://localhost:8000. Sur Android, Chrome propose aussi « Installer ».
 
 ## Règles
 
@@ -49,8 +52,8 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 ## Android
 
 ```sh
-android/build.sh            # APK  -> dist/ne-touche-pas-le-rouge.apk
-android/build.sh aab        # AAB  -> dist/ne-touche-pas-le-rouge.aab (Play Store)
+android/build.sh            # APK  -> dist/redless.apk
+android/build.sh aab        # AAB  -> dist/redless.aab (Play Store)
 android/release-key.sh      # crée ta clé de publication (une seule fois)
 ```
 Il faut seulement un JDK 17+, `curl`, `unzip` et `zip` : `android/fetch-tools.sh` télécharge android.jar (API 34), aapt2, d8, uber-apk-signer et bundletool. Pas besoin d'Android Studio.
@@ -58,6 +61,10 @@ Sans clé, l'APK est signé en debug et l'AAB n'est pas signé. `NO_LICENSED_MUS
 Le wrapper (`android/src/.../MainActivity.java`) fournit le plein écran, le bouton Retour, la pause en arrière-plan, les vibrations et le partage natif.
 
 Publication : voir **`PUBLISHING.md`**. Tests sur téléphone : **`TESTS.md`**. Confidentialité : **`PRIVACY.md`**. Fiche du Store : **`store/`**.
+
+## Droits
+
+Redless © 2026 anonyme5575, tous droits réservés. La musique « Sync or Die » est une œuvre originale protégée : aucune réutilisation sans autorisation écrite. Détails dans [`COPYRIGHT.md`](COPYRIGHT.md).
 
 ## Structure
 
@@ -68,7 +75,7 @@ js/config.js                modes, boutique, missions, rangs, pistes
 js/audio.js                 musique (horloge du jeu), synthé, vibrations
 js/visuals.js               cadres, pluie, particules, carte de partage
 js/game.js                  moteur, tutoriel, calibrage, écrans
-audio/ fonts/ assets/       musique, polices, images
+audio/ fonts/ assets/       musique (jeu : sync-or-die.mp3 ; menu : sync-or-die-original.mp3, fichier d'origine non modifié), polices, images
 android/                    wrapper WebView et scripts de build
 store/                      textes, icône, bannière, captures du Play Store
 ```

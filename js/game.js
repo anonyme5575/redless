@@ -1,9 +1,9 @@
 (() => {
   "use strict";
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
-  const { Music, Synth, haptic } = NT;
+  const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.2";
+  const VERSION = "2.4";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -31,6 +31,7 @@
       if (s.tutorialDone === undefined && out.games > 0) out.tutorialDone = true;
       if (s.xp === undefined) out.xp = out.scores.reduce((a, e) => a + e.score, 0);
       if (!TRACKS[out.track]) out.track = "sync";
+      out.sound = true; // the mute button is gone: volumes are set in Réglages
       return out;
     } catch { return clone(defaults); }
   }
@@ -88,6 +89,7 @@
     if (current === "calib" && id !== "calib") stopCalib();
     current = id;
     for (const k in screens) screens[k].hidden = k !== id;
+    updateMenuMusic();
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
        settings: renderSettings, duel: renderDuel, calib: renderCalib })[id]?.();
@@ -127,12 +129,15 @@
     screens.play.classList.remove("glitching"); void screens.play.offsetWidth; screens.play.classList.add("glitching");
   }
   function sfx(name, ...a) { Synth.init(); Synth[name](...a); }
-  function renderSoundBtn() {
-    const b = $("#btn-sound");
-    b.innerHTML = S.sound ? ICONS.sound : ICONS.mute;
-    b.setAttribute("aria-label", S.sound ? "Couper le son" : "Activer le son");
+  // Menu music plays on every screen outside a game, the tutorial and the calibration.
+  const QUIET = new Set(["play", "tuto", "calib"]);
+  function updateMenuMusic() {
+    if (QUIET.has(current) || document.hidden) MenuMusic.stop(); else MenuMusic.play();
   }
-  $("#btn-sound").onclick = () => { S.sound = !S.sound; save(); Synth.init(); Synth.applyVolume(); Music.applyVolume(); renderSoundBtn(); };
+  // Browsers only start audio after a tap: retry on each tap until it plays.
+  document.addEventListener("pointerdown", () => {
+    if (!QUIET.has(current) && (!MenuMusic.el || MenuMusic.el.paused)) MenuMusic.play();
+  }, true);
 
   // ---------- ranks & missions ----------
   function rankOf(xp) {
@@ -751,7 +756,10 @@
   $("#btn-pause").onclick = pause;
   $("#btn-resume").onclick = resume;
   $("#btn-quit").onclick = quit;
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { pause(); if (current === "calib") stopCalib(); } });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); }
+    else updateMenuMusic();
+  });
 
   $("#btn-play").onclick = () => startGame(S.mode);
   $("#btn-again").onclick = () => startGame(lastStart.modeId, { ...lastStart.opts, skipTuto: true });
@@ -767,7 +775,7 @@
 
   // ---------- menu ----------
   function renderMenu() {
-    bindAll(); renderSoundBtn(); renderModes(); ensureMissions();
+    bindAll(); renderModes(); ensureMissions();
     const rk = rankOf(S.xp);
     $("#rank-name").textContent = rk.name;
     $("#rank-bar").style.width = (rk.pct * 100).toFixed(1) + "%";
@@ -953,6 +961,8 @@
     $("#set-music").value = Math.round(S.musicVol * 100);
     $("#set-sfx").value = Math.round(S.sfxVol * 100);
     $("#set-vibe").setAttribute("aria-pressed", S.vibration);
+    const noVibe = NT.isIOS && !NT.native();
+    $("#set-vibe").disabled = noVibe; $("#vibe-hint").hidden = !noVibe;
     $("#set-cb").setAttribute("aria-pressed", S.colorblind);
     $("#set-latency").textContent = S.calibrated ? `${Math.round(S.latency * 1000)} ms compensés` : "Non calibré";
     $("#app-version").textContent = VERSION;
@@ -966,7 +976,7 @@
     }
     resetArmed = false; $("#btn-reset").textContent = "Effacer"; $("#reset-hint").textContent = "Crédits, records, achats";
   }
-  $("#set-music").addEventListener("input", (e) => { S.musicVol = e.target.value / 100; Music.applyVolume(); Synth.init(); Synth.applyVolume(); save(); });
+  $("#set-music").addEventListener("input", (e) => { S.musicVol = e.target.value / 100; Music.applyVolume(); MenuMusic.applyVolume(); Synth.init(); Synth.applyVolume(); save(); });
   $("#set-sfx").addEventListener("input", (e) => { S.sfxVol = e.target.value / 100; Synth.init(); Synth.applyVolume(); save(); });
   $("#set-sfx").addEventListener("change", () => sfx("hit", 3, false));
   $("#set-vibe").onclick = () => { S.vibration = !S.vibration; save(); renderSettings(); haptic("level"); };
@@ -1156,7 +1166,7 @@
   // ---------- share ----------
   function shareText() {
     const what = G.modeId === "duel" ? `en Duel (code ${G.code})` : G.modeId === "daily" ? `au Défi du jour du ${fmtDate()}` : `en ${G.M.name}`;
-    return `J'ai fait ${G.score} ${what} sur Ne touche pas le rouge, à ${Math.round(G.bpmNow)} BPM. Tu fais mieux ?`;
+    return `J'ai fait ${G.score} ${what} sur Redless, à ${Math.round(G.bpmNow)} BPM. Tu fais mieux ?`;
   }
   async function shareRun() {
     if (!G) return;
@@ -1166,7 +1176,7 @@
       const url = cv.toDataURL("image/png"), text = shareText(), n = NT.native();
       if (n && n.shareImage) { n.shareImage(url, text); return; }
       const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
-      const file = new File([blob], "ne-touche-pas-le-rouge.png", { type: "image/png" });
+      const file = new File([blob], "redless.png", { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ files: [file], text }); return; }
         catch (e) { if (e && e.name === "AbortError") return; }
@@ -1184,7 +1194,8 @@
   };
 
   // ---------- Android wrapper hooks: system Back and app going to background ----------
-  window.__pause = () => { pause(); if (current === "calib") stopCalib(); };
+  window.__pause = () => { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); };
+  window.__resume = () => updateMenuMusic();
   window.__back = () => {
     if (!$("#share-modal").hidden) { $("#share-modal").hidden = true; return true; }
     if (current === "play") {
@@ -1197,6 +1208,33 @@
     show(BACK_TO[current] || "menu"); return true;
   };
   window.__debug = () => ({ music: Music.playing, rate: Music.el && Music.el.playbackRate, bpm: G && G.bpm, bpmNow: G && G.bpmNow, cells: cells.length, tiles: G && [...G.tiles.values()].map((t) => t.kind), level: G && G.level, target: G && G.target, boss: !!(G && G.boss), score: G && G.score, spawned: G && G.spawnLog.join(",") });
+
+  // ---------- iPhone & installable web app ----------
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  NT.isIOS = isIOS;
+  // Long-press (black tiles) must not open the iOS callout or the context menu; no pinch-zoom mid-game.
+  app.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  // Let the game sound play even with the iPhone's silent switch on (Safari 16.4+).
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+  // Offline cache once installed. Refused inside previews and sandboxes: that is fine.
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !NT.native()) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+  let installPrompt = null;
+  function installDismissed() { try { return localStorage.getItem("redless-install-hidden") === "1"; } catch { return false; } }
+  function showInstall(html, withButton) {
+    if (standalone || NT.native() || installDismissed()) return;
+    $("#install-text").innerHTML = html;
+    $("#btn-install").hidden = !withButton;
+    $("#install").hidden = false;
+    fx.initFrames($("#install"));
+  }
+  if (isIOS && !standalone) showInstall("Installe Redless : <b>Partager</b> puis <b>Sur l'écran d'accueil</b>. Il marchera en plein écran et hors ligne.", false);
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; showInstall("Installe Redless sur ton téléphone : plein écran et hors ligne.", true); });
+  $("#btn-install").onclick = async () => { if (!installPrompt) return; installPrompt.prompt(); try { await installPrompt.userChoice; } catch {} installPrompt = null; $("#install").hidden = true; };
+  $("#btn-install-close").onclick = () => { $("#install").hidden = true; try { localStorage.setItem("redless-install-hidden", "1"); } catch {} };
 
   // ---------- boot ----------
   applyLook();

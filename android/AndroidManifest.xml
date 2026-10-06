@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.netouchepaslerouge.jeu">
+    package="com.redless.game">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:label="Pas le rouge"
+        android:label="Redless"
         android:icon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
         android:hardwareAccelerated="true"

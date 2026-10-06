@@ -17,5 +17,5 @@ jobs:
       - run: android/build.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: ne-touche-pas-le-rouge-apk
-          path: dist/ne-touche-pas-le-rouge.apk
+          name: redless-apk
+          path: dist/redless.apk

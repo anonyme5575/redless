@@ -175,11 +175,15 @@
     c.shadowBlur = 0;
 
     c.textAlign = "center"; c.fillStyle = col.ink;
-    c.font = "800 70px Oxanium, sans-serif";
-    c.fillText("NE TOUCHE PAS LE", W / 2, 210);
-    c.fillStyle = col.red; c.shadowColor = col.red; c.shadowBlur = 24;
-    c.font = "800 110px Oxanium, sans-serif"; c.fillText("ROUGE", W / 2, 330);
-    c.shadowBlur = 0;
+    // "REDLESS" with "RED" in red, centred as one word.
+    c.font = "800 150px Oxanium, sans-serif";
+    const wRed = c.measureText("RED").width, wLess = c.measureText("LESS").width, xt = (W - wRed - wLess) / 2;
+    c.textAlign = "left";
+    c.fillStyle = col.red; c.shadowColor = col.red; c.shadowBlur = 26; c.fillText("RED", xt, 290);
+    c.fillStyle = col.ink; c.shadowColor = col.holo; c.shadowBlur = 18; c.fillText("LESS", xt + wRed, 290);
+    c.shadowBlur = 0; c.textAlign = "center";
+    c.fillStyle = col.muted; c.font = "600 34px 'Chakra Petch', sans-serif";
+    c.fillText("TOUCHE LE VERT · JAMAIS LE ROUGE", W / 2, 360);
 
     c.fillStyle = col.holo; c.font = "700 40px 'Chakra Petch', sans-serif";
     c.fillText(d.mode.toUpperCase() + (d.code ? ` · CODE ${d.code}` : ""), W / 2, 450);
