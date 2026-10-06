@@ -5,6 +5,9 @@ on:
     branches: [main, "claude/**"]
   workflow_dispatch:
 
+permissions:
+  contents: write # to publish the APK in the « latest » release
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,3 +27,14 @@ jobs:
         with:
           name: redless-apk
           path: dist/redless.apk
+      # Fixed download link used by the « Mettre à jour » button of the Android app:
+      # https://github.com/anonyme5575/redless/releases/download/latest/redless.apk
+      - name: Publier l'APK (release « latest »)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Redless (dernière version)
+          body: "Dernière version de Redless pour Android. Télécharge redless.apk et installe-le par-dessus l'ancien : ta progression est gardée."
+          files: dist/redless.apk
+          make_latest: true
