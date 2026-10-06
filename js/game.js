@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.5";
+  const VERSION = "2.6";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -41,6 +41,7 @@
 
   // ---------- helpers ----------
   const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
   const app = $("#app");
   const cssVar = fx.cssVar;
   const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -79,9 +80,10 @@
   $("#btn-pause").innerHTML = ICONS.pause;
   $("#btn-settings").innerHTML = ICONS.gear;
   const BACK_TO = { privacy: "settings", calib: "settings" };
+  let accountReturn = "menu"; // where the account screen goes back to
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
-    b.onclick = () => show(BACK_TO[b.closest(".screen").id] || "menu");
+    b.onclick = () => { const id = b.closest(".screen").id; show(id === "account" ? accountReturn : BACK_TO[id] || "menu"); };
   });
 
   let current = "menu";
@@ -92,7 +94,7 @@
     updateMenuMusic();
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
-       settings: renderSettings, duel: renderDuel, calib: renderCalib })[id]?.();
+       settings: renderSettings, duel: renderDuel, calib: renderCalib, account: renderAccount })[id]?.();
     fx.initFrames(sc); fx.redrawFrames(sc);
     if (!reduceMotion) {
       sc.classList.remove("enter"); void sc.offsetWidth; sc.classList.add("enter");
@@ -679,6 +681,126 @@
     if (S.name && G.score > 0 && G.modeId !== "duel") recordScore(S.name);
     onlineSubmit(run);
   }
+  // ---------- account: e-mail + password; codes by e-mail to confirm the address or reset the password ----------
+  let accTab = "login", accPending = null; // accPending: {email, kind: "confirm" | "reset"}
+  function openAccount(from) { accountReturn = from || current; show("account"); }
+  function accMsg(text, bad) { const m = $("#acc-msg"); m.textContent = text || ""; m.className = "acc-msg" + (bad ? " bad" : ""); }
+  function renderAccount() {
+    const acc = NT.online.account(), signup = accTab === "signup";
+    $("#acc-tabs").hidden = !!acc || !!accPending;
+    $("#acc-auth-form").hidden = !!acc || !!accPending;
+    $("#acc-code-form").hidden = !!acc || !accPending;
+    $("#acc-signed").hidden = !acc;
+    $$("#acc-tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === accTab)));
+    $("#acc-auth-title").textContent = signup ? "Inscription" : "Connexion";
+    $("#acc-auth-intro").textContent = signup
+      ? "Choisis ton adresse e-mail et un mot de passe (8 caractères minimum). Un e-mail de bienvenue t'envoie un code pour confirmer ton adresse."
+      : "Entre ton adresse e-mail et ton mot de passe.";
+    $("#acc-password").autocomplete = signup ? "new-password" : "current-password";
+    $("#acc-password2").hidden = !signup;
+    $("#acc-submit").textContent = signup ? "Créer mon compte" : "Se connecter";
+    $("#acc-forgot").hidden = signup;
+    if (accPending) {
+      const reset = accPending.kind === "reset";
+      $("#acc-code-title").textContent = reset ? "Nouveau mot de passe" : "Confirme ton adresse";
+      $("#acc-code-hint").textContent = reset
+        ? `Code envoyé à ${accPending.email}. Entre-le avec ton nouveau mot de passe. Regarde aussi dans les spams.`
+        : `E-mail de bienvenue envoyé à ${accPending.email}. Entre le code qu'il contient. Regarde aussi dans les spams.`;
+      $("#acc-newpw").hidden = !reset;
+      $("#acc-verify").textContent = reset ? "Changer le mot de passe" : "Confirmer";
+    }
+    if (acc) $("#acc-email-shown").textContent = acc.email;
+    if (!NT.online.enabled) accMsg("Le classement mondial n'est pas configuré sur cette version.", true);
+    fx.initFrames(screens.account); fx.redrawFrames(screens.account);
+  }
+  function accError(err) {
+    if (err.offline) return "Pas de connexion internet.";
+    if (/rate|seconds|security|too many/i.test(err.message)) return "Trop de demandes : patiente une minute.";
+    if (/expired|invalid.*(otp|token)|token.*invalid/i.test(err.message)) return "Code incorrect ou expiré. Vérifie le dernier e-mail reçu.";
+    if (/weak|password should/i.test(err.message)) return "Mot de passe trop faible : 8 caractères minimum.";
+    if (/signups not allowed|disabled/i.test(err.message)) return "Les inscriptions sont fermées pour le moment.";
+    return err.message.charAt(0).toUpperCase() + err.message.slice(1) + ".";
+  }
+  async function busy(btn, fn) { btn.disabled = true; try { await fn(); } finally { btn.disabled = false; } }
+  function signedIn() {
+    accPending = null; accTab = "login"; $("#acc-password").value = $("#acc-password2").value = $("#acc-code").value = $("#acc-newpw").value = "";
+    accMsg(""); toast("Connecté");
+    NT.online.flush(S.name);
+    if (accountReturn === "over" && unsentRun) { show("over"); onlineSubmit(unsentRun); }
+    else show(accountReturn === "account" ? "menu" : accountReturn);
+  }
+  $$("#acc-tabs button").forEach((b) => (b.onclick = () => { accTab = b.dataset.tab; accMsg(""); renderAccount(); }));
+  $("#acc-eye").onclick = () => {
+    const on = $("#acc-password").type === "password";
+    ["#acc-password", "#acc-password2"].forEach((id) => ($(id).type = on ? "text" : "password"));
+    $("#acc-eye").textContent = on ? "Cacher" : "Voir"; $("#acc-eye").setAttribute("aria-pressed", String(on));
+  };
+  $("#acc-auth-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    busy($("#acc-submit"), async () => {
+      const email = $("#acc-email").value, pw = $("#acc-password").value;
+      try {
+        let r;
+        if (accTab === "signup") {
+          if (pw !== $("#acc-password2").value) { accMsg("Les deux mots de passe sont différents.", true); return; }
+          accMsg("Création du compte…");
+          r = await NT.online.signUp(email, pw);
+        } else {
+          accMsg("Connexion…");
+          r = await NT.online.signIn(email, pw);
+        }
+        if (r.confirm) { accPending = { email: r.email, kind: "confirm" }; accMsg(accTab === "signup" ? "Compte créé." : "Ton adresse n'est pas encore confirmée : un nouveau code t'a été envoyé."); renderAccount(); $("#acc-code").focus(); }
+        else signedIn();
+      } catch (err) {
+        if (err.exists) { accTab = "login"; renderAccount(); accMsg("Cette adresse a déjà un compte : connecte-toi.", true); return; }
+        accMsg(accError(err), true);
+      }
+    });
+  });
+  $("#acc-forgot").onclick = () => busy($("#acc-forgot"), async () => {
+    try { accPending = { email: await NT.online.resetPassword($("#acc-email").value), kind: "reset" }; accMsg(""); renderAccount(); $("#acc-code").focus(); }
+    catch (err) { accMsg(/invalide/.test(err.message) ? "Entre d'abord ton adresse e-mail." : accError(err), true); }
+  });
+  $("#acc-code-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    busy($("#acc-verify"), async () => {
+      try {
+        if (accPending.kind === "reset") await NT.online.newPassword(accPending.email, $("#acc-code").value, $("#acc-newpw").value);
+        else await NT.online.verifyCode(accPending.email, $("#acc-code").value);
+        signedIn();
+      } catch (err) { accMsg(accError(err), true); }
+    });
+  });
+  $("#acc-resend").onclick = () => busy($("#acc-resend"), async () => {
+    try {
+      if (accPending.kind === "reset") await NT.online.resetPassword(accPending.email);
+      else await NT.online.resendCode(accPending.email);
+      accMsg("Nouveau code envoyé.");
+    } catch (err) { accMsg(accError(err), true); }
+  });
+  $("#acc-change").onclick = () => { accPending = null; accMsg(""); renderAccount(); };
+  $("#acc-logout").onclick = () => { NT.online.logout(); toast("Déconnecté"); renderAccount(); };
+  // Two taps: the first arms the button for 5 s (window.confirm does not show in the Android WebView).
+  let deleteArmed = 0;
+  $("#acc-delete").onclick = () => {
+    const btn = $("#acc-delete");
+    if (Date.now() > deleteArmed) {
+      deleteArmed = Date.now() + 5000;
+      btn.textContent = "Appuie encore pour tout supprimer";
+      accMsg("Ton compte, ton pseudo et tous tes scores mondiaux seront effacés définitivement.", true);
+      setTimeout(() => { if (Date.now() > deleteArmed) { btn.textContent = "Supprimer mon compte"; accMsg(""); } }, 5100);
+      return;
+    }
+    deleteArmed = 0; btn.textContent = "Supprimer mon compte";
+    busy(btn, async () => {
+      try { await NT.online.deleteAccount(); toast("Compte supprimé"); accMsg(""); renderAccount(); }
+      catch (err) { accMsg(err.needLogin ? "Reconnecte-toi, puis recommence." : accError(err), true); if (err.needLogin) renderAccount(); }
+    });
+  };
+  $("#btn-over-login").onclick = () => openAccount("over");
+  $("#btn-rank-login").onclick = () => openAccount("ranking");
+  $("#btn-account").onclick = () => openAccount("settings");
+
   // ---------- world leaderboard ----------
   let unsentRun = null;
   const ordinal = (n) => (n === 1 ? "1er" : n + "e");
@@ -687,6 +809,13 @@
     unsentRun = null;
     if (!NT.online.enabled || !NT.online.GLOBAL_MODES.includes(run.mode) || run.score <= 0) { el.hidden = true; return; }
     el.hidden = false; el.className = "over-online";
+    $("#btn-over-login").hidden = true;
+    if (!NT.online.account()) {
+      unsentRun = run;
+      el.textContent = "Connecte-toi ou crée un compte pour envoyer ce score au classement mondial.";
+      $("#btn-over-login").hidden = false;
+      return;
+    }
     if (!S.name) { unsentRun = run; el.textContent = "Choisis un pseudo ci-dessous pour entrer au classement mondial."; return; }
     el.textContent = "Envoi au classement mondial…";
     try {
@@ -697,8 +826,9 @@
       el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`;
     } catch (e) {
       el.className = "over-online bad";
-      el.textContent = `Classement mondial : ${e.message}.`;
-      if (/pseudo/.test(e.message)) unsentRun = run;
+      el.textContent = e.needLogin ? "Ta connexion a expiré : reconnecte-toi pour envoyer ce score." : `Classement mondial : ${e.message}.`;
+      if (/pseudo/.test(e.message) || e.needLogin) unsentRun = run;
+      if (e.needLogin) $("#btn-over-login").hidden = false;
     }
   }
   function recordScore(name) {
@@ -944,6 +1074,7 @@
       tabs.appendChild(t);
     }
     $("#event-card").hidden = !world;
+    $("#btn-rank-login").hidden = !world || !NT.online.enabled || !!NT.online.account();
     const ol = $("#board-list"); ol.innerHTML = "";
     if (world) return renderWorld(ol);
     $("#rank-note").textContent = "Classement enregistré sur cet appareil";
@@ -1003,7 +1134,11 @@
     } catch (e) {
       if (req !== boardReq) return;
       ol.innerHTML = "";
-      ol.appendChild(emptyRow(e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne." : `Classement indisponible : ${e.message}`));
+      const msg = e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne."
+        : /api key/i.test(e.message) ? "Le serveur refuse la clé du jeu (adresse ou clé publique Supabase incorrecte)."
+        : /function|schema|does not exist/i.test(e.message) ? "Le serveur n'est pas encore prêt (schéma SQL non installé)."
+        : `Classement indisponible : ${e.message}`;
+      ol.appendChild(emptyRow(msg));
     }
   }
 
@@ -1047,6 +1182,8 @@
   // ---------- settings ----------
   function renderSettings() {
     $("#set-name").value = S.name || "";
+    const acc = NT.online.account();
+    $("#set-account").textContent = !NT.online.enabled ? "Classement non configuré" : acc ? acc.email : "Non connecté";
     $("#set-music").value = Math.round(S.musicVol * 100);
     $("#set-sfx").value = Math.round(S.sfxVol * 100);
     $("#set-vibe").setAttribute("aria-pressed", S.vibration);

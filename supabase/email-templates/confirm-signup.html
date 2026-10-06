@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<body style="margin:0;padding:0;background:#040a11;font-family:Arial,Helvetica,sans-serif;color:#d8f3ff;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#040a11;padding:32px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;border:1px solid #36c9ff;border-radius:14px;background:#071522;">
+        <tr><td style="padding:28px 28px 8px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#36c9ff;">RED<span style="color:#ff2d55;">LESS</span></div>
+          <div style="font-size:12px;letter-spacing:2px;color:#7fa9bf;margin-top:4px;">TOUCHE LE VERT · JAMAIS LE ROUGE</div>
+        </td></tr>
+        <tr><td style="padding:16px 28px;font-size:16px;line-height:1.5;">
+          <p style="margin:0 0 12px;font-size:20px;font-weight:bold;color:#ffffff;">Bienvenue dans Redless !</p>
+          <p style="margin:0 0 20px;">Ton compte est créé. Saisis ce code dans l'application pour confirmer ton adresse :</p>
+          <div style="text-align:center;margin:0 0 20px;">
+            <span style="display:inline-block;padding:14px 22px;border:2px solid #2bff8a;border-radius:10px;font-size:32px;font-weight:bold;letter-spacing:8px;color:#2bff8a;font-family:'Courier New',monospace;">{{ .Token }}</span>
+          </div>
+          <p style="margin:0 0 12px;">Ensuite, tu te connectes avec ton adresse et ton mot de passe, et tes scores partent au classement mondial et l'événement mensuel compte tes parties. Bonne chance : ne touche jamais le rouge.</p>
+          <p style="margin:0;font-size:13px;color:#7fa9bf;">Ce code expire dans une heure. Si tu n'as rien demandé, ignore ce message : le compte ne sera pas activé.</p>
+        </td></tr>
+        <tr><td style="padding:12px 28px 24px;font-size:12px;color:#557488;text-align:center;">Redless · {{ .Email }}</td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
