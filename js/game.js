@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.0";
+  const VERSION = "3.1";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1146,7 +1146,7 @@
       const b = document.createElement("button");
       b.textContent = TRACKS[id].name; b.setAttribute("aria-pressed", S.track === id);
       if (TRACKS[id].src && Music.failed[id]) { b.disabled = true; b.title = "Fichier absent de cette version"; }
-      b.onclick = () => { S.track = id; save(); renderSettings(); sfx("ui"); };
+      b.onclick = () => { S.track = id; save(); renderSettings(); sfx("ui"); updateMenuMusic(); }; // the menus switch to it too
       seg.appendChild(b);
     }
     resetArmed = false; $("#btn-reset").textContent = "Effacer"; $("#reset-hint").textContent = "Crédits, records, achats";

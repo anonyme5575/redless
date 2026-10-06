@@ -70,15 +70,22 @@
     },
   };
 
-  // ---------- menu music: the original track, looped at normal speed ----------
+  // ---------- menu music: the chosen track, looped at normal speed ----------
+  // « Sync or Die » plays its original file; « Synthé » (no file) keeps that one too.
   const MenuMusic = {
-    el: null, on: false, fade: 0,
+    el: null, on: false, fade: 0, src: "",
+    source() {
+      const tr = TRACKS[S().track];
+      return S().track === "sync" || !tr || !tr.src || Music.failed[S().track] ? NT.cfg.MENU_TRACK : tr.src;
+    },
     play() {
       this.on = true;
+      const src = this.source();
+      if (this.el && this.src !== src) { this.el.pause(); this.el = null; } // another track was chosen
       if (!this.el) {
         const a = new window.Audio();
-        a.src = NT.cfg.MENU_TRACK; a.loop = true; a.preload = "auto";
-        this.el = a;
+        a.src = src; a.loop = true; a.preload = "auto";
+        this.el = a; this.src = src;
       }
       const a = this.el;
       clearInterval(this.fade);
