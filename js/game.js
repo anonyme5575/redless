@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.8";
+  const VERSION = "2.9";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -93,6 +93,7 @@
     if (current === "calib" && id !== "calib") stopCalib();
     current = id;
     for (const k in screens) screens[k].hidden = k !== id;
+    if (id !== "shop") try { stopPreviewMusic(); } catch {} // leaving the shop ends a music preview
     updateMenuMusic();
     try { showUpdateBar(); } catch {} // hidden during a run
     const sc = screens[id];
@@ -885,16 +886,27 @@
     if (req.missions) return { ok: S.stats.missions >= req.missions, text: `${req.missions} missions (${Math.min(S.stats.missions, req.missions)}/${req.missions})` };
     return { ok: true, text: "" };
   }
-  // Music preview in the shop: 8 beats of the track, played live by the synth.
-  let previewTimers = [];
-  function previewMusic(id) {
+  // Music preview in the shop: 8 s of the song (from a third of the way in), or 8 synth beats.
+  let previewTimers = [], previewAudio = null;
+  function stopPreviewMusic() {
     previewTimers.forEach(clearTimeout); previewTimers = [];
-    const style = TRACKS[id].style;
-    if (!style) return;
+    if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+  }
+  function previewMusic(id) {
+    stopPreviewMusic();
+    const tr = TRACKS[id];
     Synth.init(); MenuMusic.suspend();
-    const spb = 60 / 112;
-    for (let k = 0; k < 8; k++) previewTimers.push(setTimeout(() => Synth.beat(k, spb, 2, style), k * spb * 1000));
-    previewTimers.push(setTimeout(() => updateMenuMusic(), 8 * spb * 1000 + 300));
+    let ms = 8000;
+    if (tr.src) {
+      const a = previewAudio = new window.Audio(tr.src);
+      a.volume = S.musicVol;
+      a.addEventListener("loadedmetadata", () => { try { a.currentTime = a.duration / 3; } catch {} }, { once: true });
+      a.play().catch(() => {});
+    } else {
+      const spb = 60 / 112; ms = 8 * spb * 1000;
+      for (let k = 0; k < 8; k++) previewTimers.push(setTimeout(() => Synth.beat(k, spb, 2), k * spb * 1000));
+    }
+    previewTimers.push(setTimeout(() => { stopPreviewMusic(); updateMenuMusic(); }, ms + 300));
   }
   function itemPreview(cat, item) {
     const p = document.createElement("div");

@@ -6,10 +6,10 @@ window.NT = window.NT || {};
   // Music tracks. bpm/offset were measured on the file; "synth" is generated live at any tempo.
   const TRACKS = {
     sync: { name: "Sync or Die", src: "audio/sync-or-die.mp3", bpm: 100, offset: 0.055 },
-    synth: { name: "Synthé", src: null, style: "synth" },
-    // Two more tracks played live by the synth (no file): unlocked in the shop.
-    drive: { name: "Néon Drive", src: null, style: "drive" },
-    chip: { name: "8-bit Rush", src: null, style: "chip" },
+    synth: { name: "Synthé", src: null },
+    // Two more tracks, unlocked in the shop. bpm/offset measured on the files (strong beats).
+    scar: { name: "Every Scar A Shield", src: "audio/every-scar-a-shield.mp3", bpm: 68, offset: 0.084 },
+    velvet: { name: "The Velvet Hour", src: "audio/the-velvet-hour.mp3", bpm: 95, offset: 0.14 },
   };
   // Menu music: the original file, played as is (normal speed, untouched).
   const MENU_TRACK = "audio/sync-or-die-original.mp3";
@@ -109,8 +109,8 @@ window.NT = window.NT || {};
     music: [
       { id: "sync",  name: "Sync or Die", price: 0 },
       { id: "synth", name: "Synthé",      price: 0 },
-      { id: "drive", name: "Néon Drive",  price: 500 },
-      { id: "chip",  name: "8-bit Rush",  price: 700, req: { rank: "Cadet" } },
+      { id: "scar",   name: "Every Scar A Shield", price: 500 },
+      { id: "velvet", name: "The Velvet Hour",     price: 700, req: { rank: "Cadet" } },
     ],
   };
 

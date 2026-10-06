@@ -85,7 +85,7 @@ js/config.js                modes, boutique, missions, rangs, pistes
 js/audio.js                 musique (horloge du jeu), synthé, vibrations
 js/visuals.js               cadres, pluie, particules, carte de partage
 js/game.js                  moteur, tutoriel, calibrage, écrans
-audio/ fonts/ assets/       musique (jeu : sync-or-die.mp3 ; menu : sync-or-die-original.mp3, fichier d'origine non modifié), polices, images
+audio/ fonts/ assets/       musique (jeu : sync-or-die.mp3, every-scar-a-shield.mp3, the-velvet-hour.mp3 ; menu : sync-or-die-original.mp3, fichier d'origine non modifié), polices, images
 android/                    wrapper WebView et scripts de build
 store/                      textes, icône, bannière, captures du Play Store
 ```
