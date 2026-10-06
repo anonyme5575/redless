@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.1";
+  const VERSION = "3.2";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -142,7 +142,8 @@
   }
   // Browsers only start audio after a tap: retry on each tap until it plays.
   document.addEventListener("pointerdown", () => {
-    if (!QUIET.has(current) && (!MenuMusic.el || MenuMusic.el.paused)) MenuMusic.play();
+    // Not during a shop preview: only one music at a time.
+    if (!QUIET.has(current) && !previewOn() && (!MenuMusic.el || MenuMusic.el.paused)) MenuMusic.play();
   }, true);
 
   // ---------- ranks & missions ----------
@@ -786,7 +787,7 @@
   $("#btn-resume").onclick = resume;
   $("#btn-quit").onclick = quit;
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); }
+    if (document.hidden) { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); stopPreviewMusic(); }
     else updateMenuMusic();
   });
 
@@ -888,6 +889,7 @@
   }
   // Music preview in the shop: 8 s of the song (from a third of the way in), or 8 synth beats.
   let previewTimers = [], previewAudio = null;
+  function previewOn() { return !!previewAudio || previewTimers.length > 0; }
   function stopPreviewMusic() {
     previewTimers.forEach(clearTimeout); previewTimers = [];
     if (previewAudio) { previewAudio.pause(); previewAudio = null; }
@@ -968,7 +970,8 @@
           S.coins -= item.price; S.owned[shopCat].push(item.id); toast(`${item.name} débloqué`);
         }
         endPreview();
-        if (isMusic) { S.track = item.id; save(); sfx("ui"); haptic("ui"); previewMusic(item.id); return renderShop(); }
+        // Chosen music: it becomes the app's music right away (menus and games).
+        if (isMusic) { S.track = item.id; save(); haptic("ui"); stopPreviewMusic(); updateMenuMusic(); return renderShop(); }
         S.equipped[shopCat] = item.id; save(); applyLook(); sfx("ui"); haptic("ui");
         if (shopCat === "fx") { const a = app.getBoundingClientRect(), r = b.getBoundingClientRect(); fx.burst(r.left - a.left + r.width / 2, r.top - a.top + r.height / 3, cssVar("--green"), item.id); }
         renderShop();
@@ -1530,7 +1533,7 @@
   };
 
   // ---------- Android wrapper hooks: system Back and app going to background ----------
-  window.__pause = () => { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); };
+  window.__pause = () => { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); stopPreviewMusic(); };
   window.__resume = () => updateMenuMusic();
   window.__back = () => {
     if (!$("#share-modal").hidden) { $("#share-modal").hidden = true; return true; }
