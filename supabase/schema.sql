@@ -101,6 +101,18 @@ begin
   return next;
 end $$;
 
+-- ---------- compte requis ----------
+-- Seuls les comptes vérifiés par e-mail peuvent publier : un jeton anonyme est refusé.
+create or replace function public.redless_require_email()
+returns uuid language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'non connecté' using errcode = '28000'; end if;
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'connexion par e-mail requise' using errcode = '28000';
+  end if;
+  return auth.uid();
+end $$;
+
 -- ---------- envoi d'un score ----------
 create or replace function public.submit_score(
   p_mode text, p_score int, p_level int, p_bpm int, p_duration_ms int, p_name text default null
@@ -109,13 +121,12 @@ returns table (season int, best int, rank int, players int)
 language plpgsql volatile security definer set search_path = public as $$
 #variable_conflict use_column
 declare
-  uid uuid := auth.uid();
+  uid uuid := redless_require_email();
   cfg record;
   me public.players%rowtype;
   s int;
   clean_name text := nullif(btrim(coalesce(p_name, '')), '');
 begin
-  if uid is null then raise exception 'non connecté' using errcode = '28000'; end if;
   select * into cfg from redless_settings();
   if not (p_mode = any (cfg.modes)) then raise exception 'mode inconnu'; end if;
   if p_score is null or p_score < 0 or p_score > 100000 then raise exception 'score invalide'; end if;
@@ -171,7 +182,7 @@ end $$;
 create or replace function public.set_name(p_name text)
 returns void language plpgsql volatile security definer set search_path = public as $$
 begin
-  if auth.uid() is null then raise exception 'non connecté' using errcode = '28000'; end if;
+  perform redless_require_email();
   update public.players set name = btrim(p_name) where id = auth.uid();
 exception
   when unique_violation then raise exception 'pseudo déjà pris';
@@ -199,6 +210,7 @@ $$;
 -- ---------- accès ----------
 revoke all on function public.submit_score(text, int, int, int, int, text) from public;
 revoke all on function public.set_name(text) from public;
+revoke all on function public.redless_require_email() from public, anon, authenticated;
 grant execute on function public.event_info() to anon, authenticated;
 grant execute on function public.get_leaderboard(text, int, int) to anon, authenticated;
 grant execute on function public.submit_score(text, int, int, int, int, text) to authenticated;

@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.5";
+  const VERSION = "2.6";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -79,9 +79,10 @@
   $("#btn-pause").innerHTML = ICONS.pause;
   $("#btn-settings").innerHTML = ICONS.gear;
   const BACK_TO = { privacy: "settings", calib: "settings" };
+  let accountReturn = "menu"; // where the account screen goes back to
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
-    b.onclick = () => show(BACK_TO[b.closest(".screen").id] || "menu");
+    b.onclick = () => { const id = b.closest(".screen").id; show(id === "account" ? accountReturn : BACK_TO[id] || "menu"); };
   });
 
   let current = "menu";
@@ -92,7 +93,7 @@
     updateMenuMusic();
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
-       settings: renderSettings, duel: renderDuel, calib: renderCalib })[id]?.();
+       settings: renderSettings, duel: renderDuel, calib: renderCalib, account: renderAccount })[id]?.();
     fx.initFrames(sc); fx.redrawFrames(sc);
     if (!reduceMotion) {
       sc.classList.remove("enter"); void sc.offsetWidth; sc.classList.add("enter");
@@ -679,6 +680,48 @@
     if (S.name && G.score > 0 && G.modeId !== "duel") recordScore(S.name);
     onlineSubmit(run);
   }
+  // ---------- account: e-mail + one-time code ----------
+  let accEmail = "";
+  function openAccount(from) { accountReturn = from || current; show("account"); }
+  function accMsg(text, bad) { const m = $("#acc-msg"); m.textContent = text || ""; m.className = "acc-msg" + (bad ? " bad" : ""); }
+  function renderAccount() {
+    const acc = NT.online.account();
+    $("#acc-email-form").hidden = !!acc || !!accEmail;
+    $("#acc-code-form").hidden = !!acc || !accEmail;
+    $("#acc-signed").hidden = !acc;
+    if (acc) $("#acc-email-shown").textContent = acc.email;
+    if (accEmail) $("#acc-code-hint").textContent = `Code envoyé à ${accEmail}. Regarde aussi dans les spams. Il est valable une heure.`;
+    if (!NT.online.enabled) accMsg("Le classement mondial n'est pas configuré sur cette version.", true);
+    fx.initFrames(screens.account); fx.redrawFrames(screens.account);
+  }
+  async function busy(btn, fn) { btn.disabled = true; try { await fn(); } finally { btn.disabled = false; } }
+  $("#acc-email-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    busy($("#acc-send"), async () => {
+      accMsg("Envoi du code…");
+      try { accEmail = await NT.online.sendCode($("#acc-email").value); accMsg(""); renderAccount(); $("#acc-code").focus(); }
+      catch (err) { accMsg(err.offline ? "Pas de connexion internet." : /rate|seconds|security/i.test(err.message) ? "Patiente une minute avant de redemander un code." : `Impossible d'envoyer le code : ${err.message}`, true); }
+    });
+  });
+  $("#acc-code-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    busy($("#acc-verify"), async () => {
+      try {
+        await NT.online.verifyCode(accEmail, $("#acc-code").value);
+        accEmail = ""; $("#acc-code").value = ""; accMsg("");
+        toast("Connecté");
+        NT.online.flush(S.name);
+        if (accountReturn === "over" && unsentRun) { show("over"); onlineSubmit(unsentRun); }
+        else show(accountReturn === "account" ? "menu" : accountReturn);
+      } catch (err) { accMsg(err.offline ? "Pas de connexion internet." : /expired|invalid/i.test(err.message) ? "Code incorrect ou expiré. Vérifie le dernier e-mail reçu." : err.message, true); }
+    });
+  });
+  $("#acc-change").onclick = () => { accEmail = ""; accMsg(""); renderAccount(); };
+  $("#acc-logout").onclick = () => { NT.online.logout(); toast("Déconnecté"); renderAccount(); };
+  $("#btn-over-login").onclick = () => openAccount("over");
+  $("#btn-rank-login").onclick = () => openAccount("ranking");
+  $("#btn-account").onclick = () => openAccount("settings");
+
   // ---------- world leaderboard ----------
   let unsentRun = null;
   const ordinal = (n) => (n === 1 ? "1er" : n + "e");
@@ -687,6 +730,13 @@
     unsentRun = null;
     if (!NT.online.enabled || !NT.online.GLOBAL_MODES.includes(run.mode) || run.score <= 0) { el.hidden = true; return; }
     el.hidden = false; el.className = "over-online";
+    $("#btn-over-login").hidden = true;
+    if (!NT.online.account()) {
+      unsentRun = run;
+      el.textContent = "Connecte-toi avec ton e-mail pour envoyer ce score au classement mondial.";
+      $("#btn-over-login").hidden = false;
+      return;
+    }
     if (!S.name) { unsentRun = run; el.textContent = "Choisis un pseudo ci-dessous pour entrer au classement mondial."; return; }
     el.textContent = "Envoi au classement mondial…";
     try {
@@ -697,8 +747,9 @@
       el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`;
     } catch (e) {
       el.className = "over-online bad";
-      el.textContent = `Classement mondial : ${e.message}.`;
-      if (/pseudo/.test(e.message)) unsentRun = run;
+      el.textContent = e.needLogin ? "Ta connexion a expiré : reconnecte-toi pour envoyer ce score." : `Classement mondial : ${e.message}.`;
+      if (/pseudo/.test(e.message) || e.needLogin) unsentRun = run;
+      if (e.needLogin) $("#btn-over-login").hidden = false;
     }
   }
   function recordScore(name) {
@@ -944,6 +995,7 @@
       tabs.appendChild(t);
     }
     $("#event-card").hidden = !world;
+    $("#btn-rank-login").hidden = !world || !NT.online.enabled || !!NT.online.account();
     const ol = $("#board-list"); ol.innerHTML = "";
     if (world) return renderWorld(ol);
     $("#rank-note").textContent = "Classement enregistré sur cet appareil";
@@ -1051,6 +1103,8 @@
   // ---------- settings ----------
   function renderSettings() {
     $("#set-name").value = S.name || "";
+    const acc = NT.online.account();
+    $("#set-account").textContent = !NT.online.enabled ? "Classement non configuré" : acc ? acc.email : "Non connecté";
     $("#set-music").value = Math.round(S.musicVol * 100);
     $("#set-sfx").value = Math.round(S.sfxVol * 100);
     $("#set-vibe").setAttribute("aria-pressed", S.vibration);

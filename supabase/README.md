@@ -16,9 +16,40 @@ Supabase → **New project** :
 
 Le script peut être relancé sans risque.
 
-## 3. Autoriser les joueurs anonymes
-**Authentication** → **Sign In / Providers** (ou **Settings**) → active **Allow anonymous sign-ins** → **Save**.
-Chaque téléphone reçoit ainsi un identifiant anonyme : pas d'e-mail, pas de mot de passe pour les joueurs.
+## 3. Connexion des joueurs par e-mail
+Le joueur saisit son adresse, reçoit un **code à 6 chiffres** par e-mail et le tape dans le jeu. Pas de mot de passe. La première fois, le message est un e-mail de bienvenue (inscription) ; ensuite, un simple code de connexion. Un compte anonyme ne peut plus publier de score (refusé par `submit_score`).
+
+**a. Fournisseur**
+**Authentication → Sign In / Providers** :
+- **Email** : activé, **Confirm email** activé ;
+- **Allow anonymous sign-ins** : **désactivé**.
+
+**b. Envoi des e-mails via Gmail (obligatoire)**
+Le serveur d'e-mails intégré de Supabase n'envoie qu'aux membres de l'équipe du projet, environ 2 par heure : les joueurs ne recevraient rien.
+1. Sur le compte Google **scalariapp@gmail.com** : active la **validation en 2 étapes** (myaccount.google.com → Sécurité).
+2. Puis https://myaccount.google.com/apppasswords → nom « Supabase » → **Créer**. Copie le mot de passe de 16 lettres (sans les espaces). Ne le donne à personne, pas même à Claude.
+3. Supabase → **Authentication → Emails → SMTP Settings** → **Enable custom SMTP** :
+
+| Champ | Valeur |
+|---|---|
+| Sender email | `scalariapp@gmail.com` |
+| Sender name | `Redless` |
+| Host | `smtp.gmail.com` |
+| Port | `465` |
+| Username | `scalariapp@gmail.com` |
+| Password | le mot de passe d'application de l'étape 2 |
+
+**Save**. Gmail accepte environ 500 envois par jour sur un compte personnel.
+
+**c. Textes des e-mails**
+**Authentication → Emails → Templates** :
+- **Confirm signup** : sujet `Bienvenue dans Redless — ton code`, corps = contenu de [`email-templates/confirm-signup.html`](email-templates/confirm-signup.html) ;
+- **Magic Link** : sujet `Ton code Redless`, corps = contenu de [`email-templates/magic-link.html`](email-templates/magic-link.html).
+
+Les deux contiennent `{{ .Token }}` : c'est le code. Sans lui, le joueur reçoit un lien au lieu d'un code et ne peut pas se connecter dans l'application.
+
+**d. Limites d'envoi**
+**Authentication → Rate Limits** → **Rate limit for sending emails** : passe à `100` par heure (modifiable seulement après l'étape b).
 
 Recommandé : **Authentication → Attack Protection** → active le **CAPTCHA** plus tard si des comptes de spam apparaissent.
 
@@ -62,7 +93,7 @@ Pour changer la clé : `select vault.update_secret((select id from vault.secrets
 ## Fonctionnement
 | Règle | Où |
 |---|---|
-| Un score n'est classé qu'avec un pseudo (2 à 14 caractères, unique) | `submit_score` |
+| Un score n'est classé qu'avec un compte vérifié par e-mail et un pseudo (2 à 14 caractères, unique) | `submit_score` |
 | Meilleur score par joueur, par mode et par saison | table `best_scores` |
 | Score refusé s'il dépasse 25 points par seconde de jeu, ou si deux envois ont lieu en moins de 5 s | `submit_score` |
 | Événement : démarre **7 jours après le 30e joueur** | `app_state.threshold_reached_at` |

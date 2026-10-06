@@ -1,6 +1,6 @@
 // Global leaderboard on Supabase, over plain HTTP (no library, works offline-first).
-// Players sign in anonymously; scores go through the submit_score() function on the server,
-// which checks them. Failed sends wait in a local queue and are retried later.
+// Players sign in with their e-mail and a one-time code (no password); scores go through the
+// submit_score() function on the server, which checks them. Failed sends wait in a local queue.
 (() => {
   "use strict";
   const cfg = window.REDLESS_ONLINE || {};
@@ -35,26 +35,58 @@
   }
 
   function keep(s) {
-    session = { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at || Math.floor(Date.now() / 1000) + (s.expires_in || 3600) };
+    const email = (s.user && s.user.email) || (session && session.email) || null;
+    session = { access_token: s.access_token, refresh_token: s.refresh_token, email,
+      expires_at: s.expires_at || Math.floor(Date.now() / 1000) + (s.expires_in || 3600) };
+    // Sessions left over from the old anonymous accounts have no e-mail: they no longer count.
+    if (!session.email) { session = null; write(AUTH, null); return; }
     write(AUTH, session);
   }
-  // Anonymous account, created once per device and refreshed when it expires.
+  if (session && !session.email) { session = null; write(AUTH, null); }
+  function needLogin() { const e = new Error("connexion requise"); e.needLogin = true; return e; }
+  // Valid access token for the signed-in player, refreshed when it expires.
   async function token() {
     const now = Math.floor(Date.now() / 1000);
     if (session && session.access_token && session.expires_at - 60 > now) return session.access_token;
     if (session && session.refresh_token) {
-      try { keep(await http("/auth/v1/token?grant_type=refresh_token", { refresh_token: session.refresh_token })); return session.access_token; }
-      catch (e) { if (e.offline) throw e; }
+      try { keep(await http("/auth/v1/token?grant_type=refresh_token", { refresh_token: session.refresh_token })); if (session) return session.access_token; }
+      catch (e) { if (e.offline) throw e; logout(); }
     }
-    keep(await http("/auth/v1/signup", { data: {} }));
-    return session.access_token;
+    throw needLogin();
   }
+
+  // ---- e-mail sign-in: one form for sign-up and log-in ----
+  // 1. sendCode: Supabase e-mails a code (new address = account created + welcome e-mail).
+  // 2. verifyCode: the code opens the session.
+  const cleanEmail = (e) => String(e || "").trim().toLowerCase();
+  async function sendCode(email) {
+    if (!enabled) throw new Error("classement non configuré");
+    const em = cleanEmail(email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) throw new Error("adresse e-mail invalide");
+    await http("/auth/v1/otp", { email: em, create_user: true });
+    return em;
+  }
+  async function verifyCode(email, code) {
+    const c = String(code || "").replace(/\D/g, "");
+    if (c.length < 6) throw new Error("le code fait 6 chiffres");
+    const s = await http("/auth/v1/verify", { type: "email", email: cleanEmail(email), token: c });
+    session = { email: cleanEmail(email) };
+    keep(s);
+    if (!session) throw new Error("connexion refusée");
+    return session.email;
+  }
+  function logout() {
+    const tk = session && session.access_token;
+    session = null; write(AUTH, null);
+    if (tk) http("/auth/v1/logout", {}, tk).catch(() => {});
+  }
+  const account = () => (session && session.email ? { email: session.email } : null);
   async function rpc(name, params, needAuth) {
     // Reads work without an account; with one, the server can flag the player's own row.
     const tk = needAuth ? await token() : session ? await token().catch(() => null) : null;
     try { return await http("/rest/v1/rpc/" + name, params, tk); }
     catch (e) {
-      if (e.status === 401 && needAuth) { session = null; write(AUTH, null); return http("/rest/v1/rpc/" + name, params, await token()); }
+      if (needAuth && (e.status === 401 || /e-mail requise|non connecté/.test(e.message))) { logout(); throw needLogin(); }
       throw e;
     }
   }
@@ -74,7 +106,7 @@
   // Retries queued scores one by one (the server refuses more than one every 5 s).
   let flushing = false;
   async function flush(name) {
-    if (!enabled || flushing) return;
+    if (!enabled || flushing || !session) return;
     const q = read(QUEUE, []); if (!q.length) return;
     flushing = true;
     try {
@@ -82,7 +114,7 @@
         const { t, ...p } = q[0];
         if (!p.p_name && name) p.p_name = name;
         try { await rpc("submit_score", p, true); }
-        catch (e) { if (e.offline) break; if (/trop rapide/.test(e.message)) { await new Promise((r) => setTimeout(r, 5500)); continue; } }
+        catch (e) { if (e.offline || e.needLogin) break; if (/trop rapide/.test(e.message)) { await new Promise((r) => setTimeout(r, 5500)); continue; } }
         q.shift(); write(QUEUE, q);
       }
     } finally { flushing = false; }
@@ -109,5 +141,6 @@
   }
 
   window.addEventListener("online", () => flush());
-  NT.online = { enabled, GLOBAL_MODES, submit, flush, leaderboard, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length };
+  NT.online = { enabled, GLOBAL_MODES, submit, flush, leaderboard, eventInfo, rename, registerInstall,
+    sendCode, verifyCode, logout, account, pending: () => read(QUEUE, []).length };
 })();

@@ -8,8 +8,9 @@ Dernière mise à jour : 6 octobre 2026
 Crédits, records locaux, réglages, progression des missions : stockés uniquement sur l'appareil.
 
 ## Classement mondial
-Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, hébergé dans l'Union européenne) :
-- un **identifiant anonyme** créé pour ton appareil (pas de compte, pas d'e-mail) ;
+Pour publier tes scores, tu te connectes avec ton **adresse e-mail** : le jeu t'envoie un code à usage unique (pas de mot de passe). Le serveur (Supabase, hébergé dans l'Union européenne) conserve :
+- ton **adresse e-mail**, jamais affichée aux autres joueurs, utilisée seulement pour t'envoyer les codes de connexion et le message de bienvenue à l'inscription (aucune publicité) ;
+- un **identifiant de compte** aléatoire ;
 - ton **pseudo**, visible des autres joueurs ;
 - pour chaque partie : **mode, score, niveau, tempo, durée**, date d'envoi.
 
@@ -27,7 +28,7 @@ L'image est créée sur ton appareil et transmise seulement à l'application que
 
 ## Suppression
 - Sur l'appareil : Réglages → Progression → Effacer, ou désinstaller le jeu.
-- Sur le serveur : ouvre une demande sur https://github.com/anonyme5575/redless en indiquant ton pseudo. Tes scores et ton pseudo sont supprimés sous 30 jours.
+- Sur le serveur : ouvre une demande sur https://github.com/anonyme5575/redless ou écris à scalariapp@gmail.com depuis l'adresse de ton compte. Ton compte, ton adresse e-mail, ton pseudo et tes scores sont supprimés sous 30 jours.
 
 ## Enfants
 Le jeu ne demande aucune donnée d'identité. Le pseudo ne doit pas contenir ton vrai nom.

@@ -587,3 +587,11 @@ html, body { touch-action: manipulation; }
 .over-online.bad { color: var(--warn); }
 .name-set { display: flex; gap: 6px; align-items: center; }
 .name-set input { width: 9.5em; font: inherit; font-weight: 700; color: var(--ink); background: var(--panel); border: 1px solid var(--holo); padding: 7px 9px; user-select: text; -webkit-user-select: text; }
+
+/* account */
+.account-card { display: grid; gap: 10px; padding: 14px; }
+.account-card input[type="email"] { font: inherit; font-weight: 700; color: var(--ink); background: var(--panel); border: 1px solid var(--holo); padding: 12px 14px; user-select: text; -webkit-user-select: text; min-width: 0; width: 100%; }
+.acc-email { font-family: var(--font-display); font-size: 18px; letter-spacing: .04em; word-break: break-all; }
+.acc-msg { margin: 0; min-height: 20px; font-size: 14px; color: var(--holo); text-align: center; line-height: 1.4; }
+.acc-msg.bad { color: var(--warn); }
+.login-strip { background: var(--holo-dim); border: 0; border-left: 2px solid var(--gold); color: var(--ink); text-align: left; padding: 10px 12px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
