@@ -1,10 +1,5 @@
-// Connexion au classement mondial (Supabase).
-// Supabase → Project Settings → API (ou « Data API ») :
-//   url : « Project URL »               ex. https://abcdefgh.supabase.co
-//   key : clé « anon » / « publishable » (publique par conception, protégée par les règles du serveur)
-// Ne mets JAMAIS ici la clé « service_role » / « secret » ni le mot de passe de la base.
-// Laisse vide pour jouer sans classement mondial.
+// Classement mondial (Supabase). URL du projet + clé PUBLIQUE uniquement (jamais la clé secrète).
 window.REDLESS_ONLINE = {
-  url: "",
-  key: "",
+  url: "https://kuylgbqwdtgpztabsuto.supabase.co",
+  key: "sb_publishable_wZw6LMbep_Ud0h_v7y8Qwg_OXS2jKSR",
 };
