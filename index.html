@@ -12,15 +12,6 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
-<script>
-  // Vercel Web Analytics (anonymous visit counts, no cookies). Only on the hosted site:
-  // not in the Android app (file://) nor in local previews.
-  if (location.protocol === "https:" && !window.NTPLRAndroid && !/claude/.test(location.hostname)) {
-    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-    var va = document.createElement("script"); va.defer = true; va.src = "/_vercel/insights/script.js";
-    document.head.appendChild(va);
-  }
-</script>
 <!-- artifact:start -->
 <title>Redless</title>
 <link rel="stylesheet" href="css/style.css">
@@ -301,8 +292,7 @@
       <p><b>Redless ne collecte ni nom, ni e-mail, ni contact, ni position.</b></p>
       <p>Ta progression (crédits, records, réglages) reste sur ton appareil.</p>
       <p><b>Classement mondial.</b> Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, hébergé dans l'Union européenne) : ce pseudo, tes scores, ton niveau, ton tempo et la durée de tes parties, rattachés à un identifiant anonyme créé pour ton appareil. Ces données servent uniquement au classement. Le pseudo est visible des autres joueurs.</p>
-      <p><b>Site web uniquement.</b> Vercel Web Analytics compte les visites de façon anonyme : page vue, pays, type d'appareil et de navigateur. Pas de cookie, pas d'identifiant personnel, aucune donnée de jeu. L'application Android ne contient pas cet outil.</p>
-      <p>Pas de publicité. Le jeu fonctionne sans connexion ; les scores sont envoyés au retour du réseau.</p>
+      <p>Pas de publicité, pas d'outil de mesure d'audience. Le jeu fonctionne sans connexion ; les scores sont envoyés au retour du réseau.</p>
       <p>Permission utilisée : <b>vibreur</b>, pour les retours haptiques. Elle se coupe dans les réglages.</p>
       <p>Quand tu partages ton score, l'image est créée sur ton appareil et envoyée seulement à l'application que tu choisis. Sur Android 10 et plus, une copie est rangée dans Images/Redless.</p>
       <p>Désinstaller le jeu ou « Effacer la progression » supprime les données de l'appareil. Pour faire supprimer tes scores du classement mondial, ouvre une demande sur github.com/anonyme5575/redless en indiquant ton pseudo.</p>

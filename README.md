@@ -48,10 +48,6 @@ Via Supabase (offre gratuite) : un pseudo, un identifiant anonyme par téléphon
 L'**événement** démarre **7 jours après le 30e joueur**, puis le classement **repart de zéro chaque mois** (saison 1, 2, 3…). Épreuve officielle : mode Classique ; chaque mode a son classement mensuel. Avant l'événement : pré-saison.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 
-## Statistiques (Vercel Web Analytics)
-
-Le site charge `/_vercel/insights/script.js` (équivalent HTML de `@vercel/analytics`, puisque le site n'a pas d'outil d'assemblage JS), uniquement en HTTPS hors application Android. À activer dans Vercel → projet redless → **Analytics** → **Enable**.
-
 ## Confort
 
 - **Tutoriel** interactif en 8 étapes au premier lancement (revoir dans Réglages).
