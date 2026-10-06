@@ -9,7 +9,7 @@ const key = (e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || e.SUPABASE_PUBLISHABLE_KE
              e.NEXT_PUBLIC_SUPABASE_ANON_KEY || e.SUPABASE_ANON_KEY || "").trim();
 
 if (!url || !key) {
-  console.log("Supabase : variables absentes, js/online-config.js laissé tel quel.");
+  console.log("Supabase : variables absentes, configuration laissée telle quelle.");
   process.exit(0);
 }
 if (!/^https:\/\/[^/]+$/.test(url.replace(/\/+$/, ""))) {
@@ -26,10 +26,12 @@ if (key.startsWith("sb_secret_") || role === "service_role") {
   process.exit(1);
 }
 
-writeFileSync(new URL("../js/online-config.js", import.meta.url), `// Généré au déploiement par scripts/online-config.mjs (variables d'environnement Supabase).
+// Target: argument 1 (e.g. public/js/online-config.js), default js/online-config.js.
+const target = process.argv[2] ? new URL(process.argv[2], "file://" + process.cwd() + "/") : new URL("../js/online-config.js", import.meta.url);
+writeFileSync(target, `// Généré au déploiement par scripts/online-config.mjs (variables d'environnement Supabase).
 window.REDLESS_ONLINE = {
   url: ${JSON.stringify(url.replace(/\/+$/, ""))},
   key: ${JSON.stringify(key)},
 };
 `);
-console.log("Supabase : js/online-config.js écrit pour " + url);
+console.log("Supabase : configuration écrite (" + target.pathname + ") pour " + url);

@@ -1,5 +1,6 @@
 {
-  "buildCommand": "node scripts/online-config.mjs",
+  "buildCommand": "node scripts/build-web.mjs",
+  "outputDirectory": "public",
   "headers": [
     {
       "source": "/sw.js",
