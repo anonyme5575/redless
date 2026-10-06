@@ -20,7 +20,7 @@ Sur la Play Console, active **Play App Signing** : Google garde la clé de signa
 ```sh
 export RELEASE_KEYSTORE=~/redless-release.jks RELEASE_KEY_ALIAS=redless
 read -rs RELEASE_STORE_PASSWORD && export RELEASE_STORE_PASSWORD
-VERSION_CODE=6 VERSION_NAME=2.3 NO_LICENSED_MUSIC=1 android/build.sh aab
+VERSION_CODE=7 VERSION_NAME=2.4 NO_LICENSED_MUSIC=1 android/build.sh aab
 # -> dist/redless.aab
 ```
 Chaque nouvelle version envoyée doit avoir un `VERSION_CODE` plus grand.

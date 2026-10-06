@@ -1,9 +1,9 @@
 (() => {
   "use strict";
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
-  const { Music, Synth, haptic } = NT;
+  const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.3";
+  const VERSION = "2.4";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -31,6 +31,7 @@
       if (s.tutorialDone === undefined && out.games > 0) out.tutorialDone = true;
       if (s.xp === undefined) out.xp = out.scores.reduce((a, e) => a + e.score, 0);
       if (!TRACKS[out.track]) out.track = "sync";
+      out.sound = true; // the mute button is gone: volumes are set in Réglages
       return out;
     } catch { return clone(defaults); }
   }
@@ -88,6 +89,7 @@
     if (current === "calib" && id !== "calib") stopCalib();
     current = id;
     for (const k in screens) screens[k].hidden = k !== id;
+    updateMenuMusic();
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
        settings: renderSettings, duel: renderDuel, calib: renderCalib })[id]?.();
@@ -127,12 +129,15 @@
     screens.play.classList.remove("glitching"); void screens.play.offsetWidth; screens.play.classList.add("glitching");
   }
   function sfx(name, ...a) { Synth.init(); Synth[name](...a); }
-  function renderSoundBtn() {
-    const b = $("#btn-sound");
-    b.innerHTML = S.sound ? ICONS.sound : ICONS.mute;
-    b.setAttribute("aria-label", S.sound ? "Couper le son" : "Activer le son");
+  // Menu music plays on every screen outside a game, the tutorial and the calibration.
+  const QUIET = new Set(["play", "tuto", "calib"]);
+  function updateMenuMusic() {
+    if (QUIET.has(current) || document.hidden) MenuMusic.stop(); else MenuMusic.play();
   }
-  $("#btn-sound").onclick = () => { S.sound = !S.sound; save(); Synth.init(); Synth.applyVolume(); Music.applyVolume(); renderSoundBtn(); };
+  // Browsers only start audio after a tap: retry on each tap until it plays.
+  document.addEventListener("pointerdown", () => {
+    if (!QUIET.has(current) && (!MenuMusic.el || MenuMusic.el.paused)) MenuMusic.play();
+  }, true);
 
   // ---------- ranks & missions ----------
   function rankOf(xp) {
@@ -751,7 +756,10 @@
   $("#btn-pause").onclick = pause;
   $("#btn-resume").onclick = resume;
   $("#btn-quit").onclick = quit;
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { pause(); if (current === "calib") stopCalib(); } });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); }
+    else updateMenuMusic();
+  });
 
   $("#btn-play").onclick = () => startGame(S.mode);
   $("#btn-again").onclick = () => startGame(lastStart.modeId, { ...lastStart.opts, skipTuto: true });
@@ -767,7 +775,7 @@
 
   // ---------- menu ----------
   function renderMenu() {
-    bindAll(); renderSoundBtn(); renderModes(); ensureMissions();
+    bindAll(); renderModes(); ensureMissions();
     const rk = rankOf(S.xp);
     $("#rank-name").textContent = rk.name;
     $("#rank-bar").style.width = (rk.pct * 100).toFixed(1) + "%";
@@ -968,7 +976,7 @@
     }
     resetArmed = false; $("#btn-reset").textContent = "Effacer"; $("#reset-hint").textContent = "Crédits, records, achats";
   }
-  $("#set-music").addEventListener("input", (e) => { S.musicVol = e.target.value / 100; Music.applyVolume(); Synth.init(); Synth.applyVolume(); save(); });
+  $("#set-music").addEventListener("input", (e) => { S.musicVol = e.target.value / 100; Music.applyVolume(); MenuMusic.applyVolume(); Synth.init(); Synth.applyVolume(); save(); });
   $("#set-sfx").addEventListener("input", (e) => { S.sfxVol = e.target.value / 100; Synth.init(); Synth.applyVolume(); save(); });
   $("#set-sfx").addEventListener("change", () => sfx("hit", 3, false));
   $("#set-vibe").onclick = () => { S.vibration = !S.vibration; save(); renderSettings(); haptic("level"); };
@@ -1186,7 +1194,8 @@
   };
 
   // ---------- Android wrapper hooks: system Back and app going to background ----------
-  window.__pause = () => { pause(); if (current === "calib") stopCalib(); };
+  window.__pause = () => { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); };
+  window.__resume = () => updateMenuMusic();
   window.__back = () => {
     if (!$("#share-modal").hidden) { $("#share-modal").hidden = true; return true; }
     if (current === "play") {

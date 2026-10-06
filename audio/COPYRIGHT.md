@@ -2,6 +2,8 @@
 
 © 2026 anonyme5575. **Tous droits réservés.**
 
+Fichiers concernés : `sync-or-die.mp3` (version du jeu) et `sync-or-die-original.mp3` (fichier d'origine, joué dans les menus).
+
 Ce morceau est une œuvre originale protégée par le droit d'auteur (Code de la propriété intellectuelle, art. L111-1 et L122-4 ; Convention de Berne).
 Sa présence dans ce dépôt et dans le jeu Redless **ne donne aucun droit** de l'utiliser ailleurs.
 

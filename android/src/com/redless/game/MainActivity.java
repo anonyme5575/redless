@@ -168,6 +168,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         web.onResume();
+        web.evaluateJavascript("window.__resume && window.__resume()", null);
     }
 
     @Override

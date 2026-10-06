@@ -8,6 +8,8 @@ window.NT = window.NT || {};
     sync: { name: "Sync or Die", src: "audio/sync-or-die.mp3", bpm: 100, offset: 0.055 },
     synth: { name: "Synthé", src: null },
   };
+  // Menu music: the original file, played as is (normal speed, untouched).
+  const MENU_TRACK = "audio/sync-or-die-original.mp3";
 
   // Each mode tunes the same engine. Levels raise the tempo; the tempo is the music's playback speed.
   // feint: chance that a tile is a feint (turn / trap / blink), from a given level.
@@ -114,7 +116,7 @@ window.NT = window.NT || {};
   ];
 
   NT.cfg = {
-    TRACKS, MODES, CATALOG, RANKS, MISSIONS,
+    TRACKS, MENU_TRACK, MODES, CATALOG, RANKS, MISSIONS,
     MODE_IDS: Object.keys(MODES).filter((id) => !MODES[id].hidden),
     DEFAULT_GRID: [4, 6],
     MAX_BPM: 200,   // = the track played at 2x

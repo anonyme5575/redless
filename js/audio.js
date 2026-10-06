@@ -70,6 +70,37 @@
     },
   };
 
+  // ---------- menu music: the original track, looped at normal speed ----------
+  const MenuMusic = {
+    el: null, on: false, fade: 0,
+    play() {
+      this.on = true;
+      if (!this.el) {
+        const a = new window.Audio();
+        a.src = NT.cfg.MENU_TRACK; a.loop = true; a.preload = "auto";
+        this.el = a;
+      }
+      const a = this.el;
+      clearInterval(this.fade);
+      a.volume = S().musicVol;
+      if (a.paused) a.play().catch(() => {}); // refused until the first tap: retried then
+    },
+    // Fades out over 300 ms, then pauses where it was.
+    stop() {
+      this.on = false;
+      const a = this.el;
+      clearInterval(this.fade);
+      if (!a || a.paused) return;
+      const v0 = a.volume; let k = 0;
+      this.fade = setInterval(() => {
+        k += 0.1; a.volume = Math.max(0, v0 * (1 - k));
+        if (k >= 1) { clearInterval(this.fade); a.pause(); }
+      }, 30);
+    },
+    suspend() { clearInterval(this.fade); if (this.el) this.el.pause(); },
+    applyVolume() { if (this.el && this.on) this.el.volume = S().musicVol; },
+  };
+
   // ---------- synth ----------
   const Synth = {
     ctx: null, sfx: null, bus: null,
@@ -183,6 +214,7 @@
   }
 
   NT.Music = Music;
+  NT.MenuMusic = MenuMusic;
   NT.Synth = Synth;
   NT.haptic = haptic;
   NT.native = native;
