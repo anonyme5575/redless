@@ -3,7 +3,7 @@
   const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS } = NT.cfg;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "2.4";
+  const VERSION = "2.5";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -630,6 +630,7 @@
       mode: G.modeId, score: G.score, bpm, level: G.level, maxCombo: G.maxCombo, maxFeintStreak: G.maxFeintStreak,
       gold: G.gold, greens: G.greens, perfects: G.perfects, inversions: G.inversions, bosses: G.bosses,
       specials: G.specials, gridCells: cells.length, one: 1, dailyPlayed: G.modeId === "daily" ? 1 : 0,
+      duration: G.clock,
     };
     const earned = Math.floor(G.score / 5) + G.coins;
     const prev = S.bests[G.modeId] || 0, isBest = G.score > prev;
@@ -676,6 +677,29 @@
     else if (done.length) setTimeout(() => toast(`${done.length} mission${done.length > 1 ? "s" : ""} accomplie${done.length > 1 ? "s" : ""}`), 900);
     // Auto-save under the last pseudo, so a quick "Rejouer" still records the score.
     if (S.name && G.score > 0 && G.modeId !== "duel") recordScore(S.name);
+    onlineSubmit(run);
+  }
+  // ---------- world leaderboard ----------
+  let unsentRun = null;
+  const ordinal = (n) => (n === 1 ? "1er" : n + "e");
+  async function onlineSubmit(run) {
+    const el = $("#over-online");
+    unsentRun = null;
+    if (!NT.online.enabled || !NT.online.GLOBAL_MODES.includes(run.mode) || run.score <= 0) { el.hidden = true; return; }
+    el.hidden = false; el.className = "over-online";
+    if (!S.name) { unsentRun = run; el.textContent = "Choisis un pseudo ci-dessous pour entrer au classement mondial."; return; }
+    el.textContent = "Envoi au classement mondial…";
+    try {
+      const r = await NT.online.submit(run, S.name);
+      if (!r) { el.hidden = true; return; }
+      if (r.queued) { el.textContent = "Hors ligne : ton score sera envoyé au classement mondial au retour du réseau."; return; }
+      el.className = "over-online ok";
+      el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`;
+    } catch (e) {
+      el.className = "over-online bad";
+      el.textContent = `Classement mondial : ${e.message}.`;
+      if (/pseudo/.test(e.message)) unsentRun = run;
+    }
   }
   function recordScore(name) {
     const form = $("#name-form");
@@ -697,9 +721,12 @@
     e.preventDefault();
     const name = $("#name-input").value.trim().slice(0, 14);
     if (!name) return toast("Écris un pseudo d'abord");
+    const changed = name !== S.name;
     recordScore(name);
     $("#name-input").blur();
     toast("Score enregistré");
+    if (unsentRun) onlineSubmit(unsentRun);
+    else if (changed && NT.online.enabled) NT.online.rename(name).catch((e) => !e.offline && toast(e.message));
   });
 
   // ---------- start, pause, quit ----------
@@ -786,6 +813,7 @@
       : "Pas encore joué · le premier essai compte";
     const doneCount = S.missions.list.filter((m) => m.done).length;
     const pill = $("#missions-pill"); pill.hidden = false; pill.textContent = `${doneCount}/3`;
+    refreshEventPill();
   }
   function renderModes() {
     const box = $("#modes"); box.innerHTML = "";
@@ -890,33 +918,93 @@
 
   // ---------- leaderboard ----------
   let rankMode = "classic";
+  let rankView = NT.online.enabled ? "world" : "local", boardReq = 0;
+  document.querySelectorAll("#rank-view button").forEach((b) => (b.onclick = () => { rankView = b.dataset.view; if (rankView === "world" && rankMode === "daily") rankMode = "classic"; renderBoard(); }));
+  function boardRow(rank, name, small, score, me, k) {
+    const li = document.createElement("li");
+    if (me) li.className = "me";
+    li.innerHTML = `<span class="rank"></span><span class="who"></span><span class="pts"></span>`;
+    li.querySelector(".rank").textContent = rank;
+    li.querySelector(".who").textContent = name;
+    const sm = document.createElement("small"); sm.textContent = small; li.querySelector(".who").appendChild(sm);
+    li.querySelector(".pts").textContent = score;
+    if (!reduceMotion) li.style.animation = `boot .4s ${Math.min(k, 12) * 35}ms both`;
+    return li;
+  }
+  function emptyRow(text) { const li = document.createElement("li"); li.className = "empty"; li.textContent = text; return li; }
   function renderBoard() {
+    document.querySelectorAll("#rank-view button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === rankView));
+    const world = rankView === "world";
     const tabs = $("#rank-tabs"); tabs.innerHTML = "";
-    for (const id of [...MODE_IDS, "daily"]) {
+    for (const id of world ? MODE_IDS : [...MODE_IDS, "daily"]) {
       const t = document.createElement("button");
       t.className = "tab"; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", id === rankMode);
       t.textContent = id === "daily" ? "Défi" : MODES[id].name;
       t.onclick = () => { rankMode = id; renderBoard(); };
       tabs.appendChild(t);
     }
+    $("#event-card").hidden = !world;
     const ol = $("#board-list"); ol.innerHTML = "";
+    if (world) return renderWorld(ol);
+    $("#rank-note").textContent = "Classement enregistré sur cet appareil";
     const rows = S.scores.filter((s) => s.mode === rankMode).slice(0, 10);
-    if (!rows.length) {
-      const li = document.createElement("li"); li.className = "empty";
-      li.textContent = `Aucun score en ${MODES[rankMode].name} pour l'instant. Termine une partie et enregistre ton pseudo pour entrer au classement.`;
-      ol.appendChild(li); return;
-    }
+    if (!rows.length) return ol.appendChild(emptyRow(`Aucun score en ${MODES[rankMode].name} pour l'instant. Termine une partie et enregistre ton pseudo pour entrer au classement.`));
     rows.forEach((s, k) => {
-      const li = document.createElement("li");
-      if (s.name === S.name) li.className = "me";
       const d = new Date(s.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-      li.innerHTML = `<span class="rank">${k + 1}</span><span class="who"></span><span class="pts">${s.score}</span>`;
-      li.querySelector(".who").textContent = s.name;
-      const sm = document.createElement("small"); sm.textContent = `Niveau ${s.level} · ${d}`;
-      li.querySelector(".who").appendChild(sm);
-      if (!reduceMotion) li.style.animation = `boot .4s ${k * 40}ms both`;
-      ol.appendChild(li);
+      ol.appendChild(boardRow(k + 1, s.name, `Niveau ${s.level} · ${d}`, s.score, s.name === S.name, k));
     });
+  }
+  const fmtLeft = (ms) => {
+    const h = Math.max(0, Math.floor(ms / 3600000)), d = Math.floor(h / 24);
+    return d >= 1 ? `${d} j ${h % 24} h` : h >= 1 ? `${h} h` : `${Math.max(1, Math.ceil(ms / 60000))} min`;
+  };
+  // Fills the event card. Times are computed from the server clock, not the phone's.
+  function renderEvent(info) {
+    const main = $("#event-main"), sub = $("#event-sub"), bar = $("#event-bar");
+    const now = new Date(info.server_now).getTime();
+    if (!info.threshold_at) {
+      main.textContent = `${info.players} / ${info.players_needed} joueurs`;
+      sub.textContent = `L'événement démarre 7 jours après le ${info.players_needed}e joueur. En attendant, la pré-saison est classée.`;
+      bar.style.width = Math.min(100, (info.players / info.players_needed) * 100) + "%";
+    } else if (info.season === 0) {
+      const left = new Date(info.event_start).getTime() - now;
+      main.textContent = `Début dans ${fmtLeft(left)}`;
+      sub.textContent = `${info.players} joueurs inscrits. La saison 1 commence le ${new Date(info.event_start).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`;
+      bar.style.width = Math.min(100, (1 - left / (7 * 864e5)) * 100) + "%";
+    } else {
+      const st = new Date(info.season_start).getTime(), en = new Date(info.season_end).getTime();
+      main.textContent = `Saison ${info.season} · fin dans ${fmtLeft(en - now)}`;
+      sub.textContent = "Remise à zéro chaque mois. Épreuve officielle : mode Classique.";
+      bar.style.width = Math.min(100, ((now - st) / (en - st)) * 100) + "%";
+    }
+    $("#rank-note").textContent = info.season === 0 ? "Pré-saison · classement mondial" : `Saison ${info.season} · classement mondial du mois`;
+    fx.initFrames($("#event-card")); fx.redrawFrames($("#event-card"));
+  }
+  async function renderWorld(ol) {
+    $("#rank-note").textContent = "Classement mondial";
+    if (!NT.online.enabled) {
+      $("#event-card").hidden = true;
+      return ol.appendChild(emptyRow("Le classement mondial n'est pas encore activé sur cette version."));
+    }
+    const req = ++boardReq, mode = rankMode === "daily" ? "classic" : rankMode;
+    ol.appendChild(emptyRow("Chargement…"));
+    try {
+      const [info, rows] = await Promise.all([NT.online.eventInfo(), NT.online.leaderboard(mode)]);
+      if (req !== boardReq || current !== "ranking") return;
+      ol.innerHTML = "";
+      if (info) renderEvent(info);
+      if (!rows || !rows.length) return ol.appendChild(emptyRow(`Personne n'est encore classé en ${MODES[mode].name} ce mois-ci. Termine une partie avec un pseudo pour être le premier.`));
+      let last = 0;
+      rows.forEach((r, k) => {
+        if (r.rank > last + 1 && last > 0) { const gap = document.createElement("li"); gap.className = "gap"; gap.textContent = "…"; ol.appendChild(gap); }
+        ol.appendChild(boardRow(r.rank, r.name, `Niveau ${r.level} · ${r.bpm} BPM`, r.score, r.is_me, k));
+        last = r.rank;
+      });
+    } catch (e) {
+      if (req !== boardReq) return;
+      ol.innerHTML = "";
+      ol.appendChild(emptyRow(e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne." : `Classement indisponible : ${e.message}`));
+    }
   }
 
   // ---------- missions & rank ----------
@@ -958,6 +1046,7 @@
 
   // ---------- settings ----------
   function renderSettings() {
+    $("#set-name").value = S.name || "";
     $("#set-music").value = Math.round(S.musicVol * 100);
     $("#set-sfx").value = Math.round(S.sfxVol * 100);
     $("#set-vibe").setAttribute("aria-pressed", S.vibration);
@@ -976,6 +1065,16 @@
     }
     resetArmed = false; $("#btn-reset").textContent = "Effacer"; $("#reset-hint").textContent = "Crédits, records, achats";
   }
+  $("#name-set-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("#set-name").value.trim().slice(0, 14);
+    if (name.length < 2) return toast("Le pseudo doit faire au moins 2 caractères");
+    if (NT.online.enabled) {
+      try { await NT.online.rename(name); }
+      catch (err) { if (!err.offline) return toast(err.message); }
+    }
+    S.name = name; save(); $("#set-name").blur(); toast("Pseudo enregistré");
+  });
   $("#set-music").addEventListener("input", (e) => { S.musicVol = e.target.value / 100; Music.applyVolume(); MenuMusic.applyVolume(); Synth.init(); Synth.applyVolume(); save(); });
   $("#set-sfx").addEventListener("input", (e) => { S.sfxVol = e.target.value / 100; Synth.init(); Synth.applyVolume(); save(); });
   $("#set-sfx").addEventListener("change", () => sfx("hit", 3, false));
@@ -1222,6 +1321,10 @@
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !NT.native()) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
+  // Install notice to the server (the owner gets an e-mail): Android app, or web app opened from the home screen.
+  const installPlatform = NT.native() ? "android" : standalone ? (isIOS ? "ios" : "web-app") : null;
+  if (installPlatform) setTimeout(() => NT.online.registerInstall(installPlatform, VERSION), 2000);
+  window.addEventListener("appinstalled", () => NT.online.registerInstall("web-app", VERSION));
   let installPrompt = null;
   function installDismissed() { try { return localStorage.getItem("redless-install-hidden") === "1"; } catch { return false; } }
   function showInstall(html, withButton) {
@@ -1235,6 +1338,20 @@
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; showInstall("Installe Redless sur ton téléphone : plein écran et hors ligne.", true); });
   $("#btn-install").onclick = async () => { if (!installPrompt) return; installPrompt.prompt(); try { await installPrompt.userChoice; } catch {} installPrompt = null; $("#install").hidden = true; };
   $("#btn-install-close").onclick = () => { $("#install").hidden = true; try { localStorage.setItem("redless-install-hidden", "1"); } catch {} };
+
+  // Event status on the menu's Classement button, refreshed at most once a minute.
+  let eventPillAt = 0;
+  async function refreshEventPill() {
+    if (!NT.online.enabled || Date.now() - eventPillAt < 60000) return;
+    eventPillAt = Date.now();
+    try {
+      const info = await NT.online.eventInfo(), p = $("#rank-pill");
+      if (!info) return;
+      p.hidden = false;
+      p.textContent = !info.threshold_at ? `${info.players}/${info.players_needed}` : info.season === 0 ? "Bientôt" : `Saison ${info.season}`;
+    } catch {}
+  }
+  if (NT.online.enabled) setTimeout(() => NT.online.flush(S.name), 3000);
 
   // ---------- boot ----------
   applyLook();

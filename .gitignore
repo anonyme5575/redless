@@ -6,3 +6,4 @@ android/.tools/
 android/build/
 dist/*.aab
 node_modules/
+public/

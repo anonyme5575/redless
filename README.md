@@ -42,6 +42,12 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 - **Rangs** selon les points de carrière (somme des scores) : Recrue, Cadet, Pilote, Vétéran, Élite, Spectre, Légende.
 - **Classement** local par mode, **partage** du score en image (1080×1350).
 
+## Classement mondial et événement
+
+Via Supabase (offre gratuite) : un pseudo, un identifiant anonyme par téléphone, des scores contrôlés côté serveur.
+L'**événement** démarre **7 jours après le 30e joueur**, puis le classement **repart de zéro chaque mois** (saison 1, 2, 3…). Épreuve officielle : mode Classique ; chaque mode a son classement mensuel. Avant l'événement : pré-saison.
+Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
+
 ## Confort
 
 - **Tutoriel** interactif en 8 étapes au premier lancement (revoir dans Réglages).
