@@ -1,7 +1,7 @@
 // Writes js/online-config.js from environment variables (Vercel build step, CI).
 // Reads only the project URL and the PUBLIC key (anon / publishable). Refuses a secret key.
 // Names covered: the ones set by the Vercel ↔ Supabase integration, and plain ones.
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const e = process.env;
 const url = (e.NEXT_PUBLIC_SUPABASE_URL || e.SUPABASE_URL || "").trim();
@@ -28,6 +28,15 @@ if (key.startsWith("sb_secret_") || role === "service_role") {
 
 // Target: argument 1 (e.g. public/js/online-config.js), default js/online-config.js.
 const target = process.argv[2] ? new URL(process.argv[2], "file://" + process.cwd() + "/") : new URL("../js/online-config.js", import.meta.url);
+// The values committed in js/online-config.js win: the site and the Android app must talk to the
+// same Supabase project. Environment variables only fill an empty file (set FORCE_ENV_CONFIG=1 to override).
+try {
+  const current = readFileSync(target, "utf8");
+  if (/url:\s*"https:\/\/[^"]+"/.test(current) && /key:\s*"[^"]+"/.test(current) && e.FORCE_ENV_CONFIG !== "1") {
+    console.log("Supabase : configuration du dépôt conservée (" + (current.match(/url:\s*"([^"]+)"/) || [])[1] + ").");
+    process.exit(0);
+  }
+} catch {}
 writeFileSync(target, `// Généré au déploiement par scripts/online-config.mjs (variables d'environnement Supabase).
 window.REDLESS_ONLINE = {
   url: ${JSON.stringify(url.replace(/\/+$/, ""))},

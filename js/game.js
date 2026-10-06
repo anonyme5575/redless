@@ -1003,7 +1003,11 @@
     } catch (e) {
       if (req !== boardReq) return;
       ol.innerHTML = "";
-      ol.appendChild(emptyRow(e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne." : `Classement indisponible : ${e.message}`));
+      const msg = e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne."
+        : /api key/i.test(e.message) ? "Le serveur refuse la clé du jeu (adresse ou clé publique Supabase incorrecte)."
+        : /function|schema|does not exist/i.test(e.message) ? "Le serveur n'est pas encore prêt (schéma SQL non installé)."
+        : `Classement indisponible : ${e.message}`;
+      ol.appendChild(emptyRow(msg));
     }
   }
 
