@@ -7,20 +7,24 @@ const server = await startServer();
 let failures = 0;
 const check = (ok, what) => { console.log((ok ? "  ok   " : "  ÉCHEC ") + what); if (!ok) failures++; };
 const browser = await chromium.launch();
-const CLASSIC = "startBpm: 60, bpmStep: 9, greensPerLevel: 8, double: 150,";
+const LINES = {
+  classic: "startBpm: 60, bpmStep: 9, greensPerLevel: 8, double: 150,",
+  chrono: "startBpm: 66, bpmStep: 12, greensPerLevel: 7, double: 45,",
+};
 
-// Starts a Classique run; `patch` rewrites the Classique line of config.js. Returns the page.
-async function run({ difficulty = "normal", patch = null, bot = false }) {
+// Starts a run; `patch` rewrites the mode's line of config.js. Returns the page.
+async function run({ mode = "classic", difficulty = "normal", patch = null, bot = false }) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 780 } });
   await ctx.route(/supabase\.co/, (r) => r.fulfill({ json: [] }));
   if (patch) await ctx.route(/js\/config\.js$/, async (r) => {
-    const res = await r.fetch(); r.fulfill({ response: res, body: (await res.text()).replace(CLASSIC, patch) });
+    const res = await r.fetch(); r.fulfill({ response: res, body: (await res.text()).replace(LINES[mode], patch) });
   });
-  await ctx.addInitScript((d) => {
+  await ctx.addInitScript(([m, d]) => {
     localStorage.setItem("redless-guest-at", String(Date.now()));
-    localStorage.setItem("ntplr-save-v1", JSON.stringify({ tutorialDone: true, mode: "classic", track: "sync", difficulty: d }));
-  }, difficulty);
+    localStorage.setItem("ntplr-save-v1", JSON.stringify({ tutorialDone: true, mode: m, track: "sync", difficulty: d }));
+  }, [mode, difficulty]);
   const p = await ctx.newPage();
+  if (process.env.SLOW_CPU) await (await ctx.newCDPSession(p)).send("Emulation.setCPUThrottlingRate", { rate: +process.env.SLOW_CPU });
   p.errors = []; p.on("pageerror", (e) => p.errors.push(e.message));
   await p.goto(server.url); await p.waitForTimeout(800);
   await p.evaluate((bot) => {
@@ -60,15 +64,18 @@ try {
     await p.context().close();
   }
 
-  console.log("Au-delà de la vitesse max de la musique");
+  // In Chrono (no lives, the bot never touches red) the run cannot end while tiles are counted.
+  console.log("Au-delà de la vitesse max de la musique (Chrono : pas de vies, la partie dure)");
   const rates = {};
   for (const bpm of [190, 400, 800]) {
-    const p = await run({ patch: `startBpm: ${bpm}, bpmStep: 0, greensPerLevel: 999, double: 1e9,`, bot: true });
+    const p = await run({ mode: "chrono", patch: `startBpm: ${bpm}, bpmStep: 0, greensPerLevel: 7, double: 1e9,` });
     await p.spawned(); await p.waitForTimeout(2000);
     const n = await p.spawned(), d = await p.dbg();
+    const running = await p.isHidden("#over");
     rates[bpm] = n;
     console.log(`       ${bpm} BPM : musique ×${d.rate.toFixed(2)}, ${n} cases en 2 s`);
-    if (bpm > 200) check(d.rate <= 2.001, `${bpm} BPM : la musique reste à 2× maximum`);
+    check(running, `${bpm} BPM : partie toujours en cours pendant la mesure`);
+    if (bpm > 200) check(d.rate > 1.95 && d.rate <= 2.001, `${bpm} BPM : la musique joue à 2×, son maximum`);
     await p.context().close();
   }
   check(rates[400] > rates[190] * 1.5 && rates[800] > rates[400] * 1.4, "les cases continuent d'accélérer au-delà de la musique");
