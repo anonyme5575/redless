@@ -1,16 +1,16 @@
-# « Sync or Die » — droits d'auteur
+# Musiques de MyBlackWhite — conditions d'utilisation
 
-© 2026 anonyme5575. **Tous droits réservés.**
+Morceaux créés par **MyBlackWhite** pour Redless (2026) :
+- « Sync or Die » : `sync-or-die.mp3` (version du jeu) et `sync-or-die-original.mp3` (fichier d'origine, joué dans les menus) ;
+- « Every Scar A Shield » : `every-scar-a-shield.mp3` ;
+- « The Velvet Hour » : `the-velvet-hour.mp3`.
 
-Fichiers concernés : `sync-or-die.mp3` (version du jeu) et `sync-or-die-original.mp3` (fichier d'origine, joué dans les menus).
+Ces morceaux ont été produits avec un outil d'IA générative de Google : les fichiers d'origine portent un manifeste C2PA (« Created by Google Generative AI ») et le filigrane SynthID. Ces marques de provenance sont conservées telles quelles.
 
-Ce morceau est une œuvre originale protégée par le droit d'auteur (Code de la propriété intellectuelle, art. L111-1 et L122-4 ; Convention de Berne).
-Sa présence dans ce dépôt et dans le jeu Redless **ne donne aucun droit** de l'utiliser ailleurs.
+Leur présence dans ce dépôt et dans le jeu Redless **ne donne aucun droit** de les utiliser ailleurs. Sans autorisation écrite de MyBlackWhite, il est interdit de :
+- copier, télécharger pour réutiliser, ou redistribuer ces fichiers ;
+- les utiliser dans un autre jeu, une vidéo, un stream, une application ou tout autre projet ;
+- les modifier, les remixer ou les échantillonner ;
+- les exploiter commercialement.
 
-Sans autorisation écrite de l'auteur, il est interdit de :
-- copier, télécharger pour réutiliser, ou redistribuer ce fichier ;
-- l'utiliser dans un autre jeu, une vidéo, un stream, une application ou tout autre projet ;
-- le modifier, le remixer ou l'échantillonner ;
-- l'exploiter commercialement.
-
-Pour toute demande d'autorisation : ouvrir une issue sur https://github.com/anonyme5575/redless.
+Pour toute demande d'autorisation à MyBlackWhite : ouvrir une issue sur https://github.com/anonyme5575/redless.

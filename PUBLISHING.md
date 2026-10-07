@@ -6,7 +6,7 @@
 - **App Store** (plus tard) : il faut un compte Apple Developer (99 $ par an) et un Mac, ou un service de build macOS dans le cloud (GitHub Actions macOS, Codemagic). Le jeu se range alors dans une coque native, le même principe que `android/` (WKWebView ou Capacitor). Apple refuse parfois les applis qui ne sont qu'un site web emballé : les fonctions natives (vibrations, partage, Game Center) aident à passer la revue.
 
 ## 1. Avant tout
-- **Droits de la musique.** « Sync or Die » est ton œuvre (voir `COPYRIGHT.md`) : tu peux la publier. Garde une preuve datée de sa création (fichiers de projet, export daté, ou dépôt e-Soleau à l'INPI). Si le morceau a été fait avec un outil d'IA, vérifie les conditions de l'outil : sur certaines offres gratuites, les droits appartiennent à l'outil. Pour publier sans le morceau : `NO_LICENSED_MUSIC=1` (piste Synthé).
+- **Droits de la musique.** « Sync or Die », « Every Scar A Shield » et « The Velvet Hour » sont signées MyBlackWhite, mais leurs fichiers d'origine indiquent « Created by Google Generative AI » (manifeste C2PA + filigrane SynthID). Deux conséquences : 1) relis les conditions de l'outil Google utilisé, qui fixent ce que tu as le droit de faire avec ses créations (usage commercial compris) ; 2) en droit français, une œuvre n'est protégée par le droit d'auteur que si elle porte l'empreinte d'une création humaine : un morceau généré par une IA à partir d'une simple consigne risque de ne pas l'être, donc d'autres pourraient le réutiliser. Garde les preuves de ta part créative (paroles, consignes, retouches, montage). Pour publier sans ces morceaux : `NO_LICENSED_MUSIC=1` (piste Synthé).
 - **Tests sur téléphone** : voir `TESTS.md`.
 
 ## 2. Clé de publication (une seule fois, sur ton ordinateur)
