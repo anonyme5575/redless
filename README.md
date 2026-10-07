@@ -62,6 +62,12 @@ L'**événement** démarre **7 jours après le 30e joueur**, puis le classement 
 **Connexion** : au lancement, tant que le joueur n'a pas de compte, l'écran « Connexion » s'affiche : créer un compte (pseudo + e-mail, code reçu par e-mail, pas de mot de passe), se connecter à un compte existant (la progression en ligne remplace celle du téléphone), ou jouer sans compte. Dans tous les cas, le jeu se connecte tout seul au serveur au démarrage (compte anonyme) ; l'adresse du serveur n'est plus modifiable dans le jeu.
 
 **Déconnexion** : Réglages → Compte → « Se déconnecter » (deux touches). La progression est d'abord sauvegardée en ligne ; si c'est impossible (hors ligne), rien ne se passe. Ensuite le téléphone repart de zéro (réglages de son et calibrage gardés) et l'écran Connexion revient.
+
+Le pseudo est vérifié dès la création du compte (fonction `name_available` : relancer `supabase/schema.sql`). Sans compte, l'écran Connexion revient au plus une fois par semaine.
+
+**Statistiques** : `supabase/stats.sql` (installations, joueurs actifs, rétention J1/S1/M1, modes joués), à coller requête par requête dans le SQL Editor. Aucune donnée nouvelle collectée.
+
+**Tests** : `node tests/login.test.mjs` (Chromium + Playwright, Supabase simulé) ; lancé par GitHub Actions à chaque push.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 
 ## Mises à jour

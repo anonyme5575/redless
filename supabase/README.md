@@ -118,6 +118,9 @@ Les comptes protégés apparaissent dans **Authentication → Users** (avec leur
 
 Réglages (nombre de joueurs, délai) : fonction `redless_settings()` en tête de `schema.sql`.
 
+## Statistiques
+SQL Editor → colle une requête de [`stats.sql`](stats.sql) → Run : vue d'ensemble, activité par jour, rétention (J1, S1, M1), modes joués, plateformes, joueurs les plus assidus (utile pour repérer un tricheur).
+
 ## Consulter ou modérer
 **Table Editor** → `players` (pseudos), `best_scores` (classement), `runs` (toutes les parties envoyées).
 Pour supprimer un tricheur ou un pseudo offensant : supprimer sa ligne dans `players`. Ses scores partent avec.
