@@ -73,6 +73,13 @@ window.NT = window.NT || {};
       lives: 3, startBpm: 76, bpmStep: 8, greensPerLevel: 8, mirror: true,
       feint: { from: 99, base: 0, step: 0, max: 0 },
     },
+    // Everything moves: the board spins, flips over (recto verso), zooms in and out, changes size,
+    // and every 3 levels teleports the player into the sloth mini-game (jump over the trees).
+    chaos: {
+      name: "Chaos", rule: "Ça tourne, ça se retourne, ça zoome… et téléportation",
+      lives: 3, startBpm: 72, bpmStep: 7, greensPerLevel: 8, chaos: true,
+      feint: { from: 3, base: 0.05, step: 0.03, max: 0.25 }, specials: true,
+    },
     // Not shown in the mode list: same rules as Classique, but every spawn comes from a seed.
     daily: {
       name: "Défi du jour", rule: "La même partie pour tout le monde aujourd'hui", hidden: true, seeded: true,
@@ -224,6 +231,7 @@ window.NT = window.NT || {};
     { id: "mirror3", text: "Survis à 3 inversions en Miroir", stat: "inversions", goal: 3, type: "max", reward: 70 },
     { id: "boss1", text: "Bats un boss", stat: "bosses", goal: 1, type: "sum", reward: 90 },
     { id: "special4", text: "Touche 4 cases spéciales", stat: "specials", goal: 4, type: "sum", reward: 50 },
+    { id: "sloth2", text: "Survis à 2 téléportations en Chaos", stat: "teleports", mode: "chaos", goal: 2, type: "max", reward: 80 },
     { id: "daily", text: "Joue le défi du jour", stat: "dailyPlayed", goal: 1, type: "sum", reward: 40 },
   ];
 
@@ -235,6 +243,9 @@ window.NT = window.NT || {};
     GLIDE: 7,       // BPM per second: the tempo slides to its new value instead of jumping
     CREEP: 0.25,    // BPM per second added between levels, so the music never stops speeding up
     BOSS_MS: 15000,
+    CHAOS_GRIDS: [[3, 3], [3, 4], [4, 4], [4, 5], [5, 5], [5, 6], [6, 6]],
+    TELEPORT_EVERY: 3, // levels
+    SLOTH_MS: 10000,
     FREEZE_MS: 3000,
   };
 })();

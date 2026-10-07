@@ -32,6 +32,7 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 | Expansion | 3 | 72 BPM | la grille passe de 2×3 à 7×9 |
 | Rythme | 3 | 80 BPM | toucher quand l'anneau se referme : Parfait (±70 ms), Bien (±150 ms) |
 | Miroir | 3 | 76 BPM | la couleur à toucher s'inverse tous les 16 temps |
+| Chaos | 3 | 72 BPM | Le plateau tourne, se retourne (recto verso) tous les 16 temps, zoome, change de taille à chaque palier ; tous les 3 paliers, téléportation dans un mini-jeu de 10 s : le paresseux saute par-dessus les arbres (arbre percuté = −1 vie, survie = +15 points, +5 crédits) |
 | Défi du jour | 3 | 72 BPM | même suite de cases pour tous, un essai officiel par jour |
 | Duel | 3 | 72 BPM | un code de 5 caractères = la même partie pour les deux joueurs |
 

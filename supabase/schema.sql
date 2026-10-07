@@ -20,7 +20,7 @@ create or replace function public.redless_settings()
 returns table (players_needed int, delay interval, modes text[])
 language sql immutable as $$
   select 30, interval '7 days',
-         array['classic','chrono','sudden','feint','expansion','rhythm','mirror']::text[]
+         array['classic','chrono','sudden','feint','expansion','rhythm','mirror','chaos']::text[]
 $$;
 
 -- ---------- tables ----------

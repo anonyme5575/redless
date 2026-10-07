@@ -202,7 +202,18 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .combo { color: var(--warn); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; min-height: 16px; }
 @keyframes blink { 50% { opacity: .25; } }
 
-.board-wrap { flex: 1; min-height: 0; display: flex; position: relative; }
+.board-wrap { flex: 1; min-height: 0; display: flex; position: relative; container-type: size; }
+/* Chaos: a square board (it spins), centred; transform set every frame by the game */
+.board.chaos { flex: none; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); margin: auto; will-change: transform; }
+.board.chaos.verso .cell { background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.board.chaos.verso .frame-svg .line { stroke: var(--warn); }
+/* Sloth mini-game */
+.sloth { position: absolute; inset: 0; z-index: 11; display: flex; flex-direction: column; gap: 8px; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px)); background: rgba(2, 8, 14, .92); touch-action: none; user-select: none; -webkit-user-select: none; }
+.sloth-head { display: flex; justify-content: space-between; align-items: baseline; }
+.sloth-head b { font-family: var(--font-display); font-size: 34px; color: var(--warn); }
+.sloth { justify-content: center; }
+.sloth canvas { flex: none; width: 100%; aspect-ratio: 4 / 3; max-height: 70%; border: 1px solid var(--holo-dim); }
+.sloth-help { margin: 0; text-align: center; color: var(--muted); font-size: 13px; letter-spacing: .08em; }
 .board {
   --cols: 4; --rows: 6; --ar: .6667;
   position: relative;
