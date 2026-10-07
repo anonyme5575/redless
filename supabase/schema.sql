@@ -179,6 +179,17 @@ exception
   when check_violation then raise exception 'pseudo invalide (2 à 14 lettres, chiffres, espace, . _ -)';
 end $$;
 
+-- Pseudo libre ? Vérifié dès la création du compte (écran Connexion), avant le premier score.
+-- Le pseudo du joueur qui demande compte comme libre. Rien n'est réservé : seul submit_score l'enregistre.
+create or replace function public.name_available(p_name text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select not exists (
+    select 1 from public.players p
+    where lower(p.name) = lower(btrim(p_name)) and p.id is distinct from auth.uid()
+  )
+$$;
+grant execute on function public.name_available(text) to anon, authenticated;
+
 -- ---------- classement ----------
 -- Top p_limit de la saison demandée (par défaut la saison en cours), plus la ligne du joueur
 -- qui appelle s'il est plus bas.

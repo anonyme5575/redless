@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.6";
+  const VERSION = "3.7";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1412,7 +1412,7 @@
       clearTimeout(pushTimer); pushTimer = 0;
       NT.online.logout();
       const device = { tutorialDone: true }; LOCAL_ONLY.forEach((k) => (device[k] = S[k]));
-      try { localStorage.setItem(KEY, JSON.stringify(device)); localStorage.removeItem(PUSHED); } catch {}
+      try { localStorage.setItem(KEY, JSON.stringify(device)); localStorage.removeItem(PUSHED); localStorage.removeItem(GUEST_AT); } catch {}
       toast("Déconnecté");
       setTimeout(() => location.reload(), 700);
     } finally { $("#btn-logout").disabled = false; }
@@ -1472,7 +1472,10 @@
   // Create: pseudo + e-mail, a code ties this phone's anonymous account to the address.
   // Existing account: e-mail + code bring its online save back. Guest: plays on the anonymous account.
   const NAME_RE = /^[A-Za-z0-9À-ÖØ-öø-ÿ _.-]{2,14}$/;
-  const needsLogin = () => NT.online.enabled && !NT.online.email();
+  // Without an account: at first launch, then again once a week at most after « Jouer sans compte ».
+  const GUEST_AT = "redless-guest-at", GUEST_EVERY = 7 * 86400000;
+  const guestAt = () => { try { return +localStorage.getItem(GUEST_AT) || 0; } catch { return 0; } };
+  const needsLogin = () => NT.online.enabled && !NT.online.email() && Date.now() - guestAt() > GUEST_EVERY;
   let login = { mode: "create", step: "email", email: "" };
   function renderLogin() {
     const { mode, step } = login, code = step === "code";
@@ -1508,6 +1511,7 @@
   $("#btn-login-guest").onclick = () => {
     const name = $("#login-name").value.trim().slice(0, 14);
     if (name && NAME_RE.test(name) && name !== S.name) keepName(name);
+    try { localStorage.setItem(GUEST_AT, String(Date.now())); } catch {}
     show("menu");
   };
   let loginBusy = false;
@@ -1519,6 +1523,7 @@
       if (login.step === "email") {
         const name = login.mode === "create" ? loginName() : "";
         if (name === null) return;
+        if (name && !(await NT.online.nameFree(name))) return toast("Ce pseudo est déjà pris, choisis-en un autre");
         const mail = $("#login-email").value.trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return toast("Adresse e-mail invalide");
         if (login.mode === "create") await NT.online.linkEmail(mail); else await NT.online.sendLogin(mail);
@@ -1571,7 +1576,7 @@
     }
     clearTimeout(pushTimer);
     NT.online.logout(); // the protected account keeps its online save: « Retrouver » brings it back
-    try { localStorage.removeItem(KEY); } catch {}
+    try { localStorage.removeItem(KEY); localStorage.removeItem(GUEST_AT); } catch {}
     location.reload();
   };
 

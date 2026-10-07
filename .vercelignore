@@ -3,3 +3,4 @@ store
 dist/*.aab
 *.md
 !PRIVACY.md
+tests

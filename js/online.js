@@ -101,6 +101,11 @@
   const profile = (name, season = null) => rpc("get_profile", { p_name: name, p_season: season }, false);
   const eventInfo = async () => { const r = await rpc("event_info", {}, false); return r && r[0]; };
   const rename = (name) => rpc("set_name", { p_name: name }, true);
+  // True if nobody else has this pseudo. Unknown (old server without the function) counts as free.
+  async function nameFree(name) {
+    try { return (await rpc("name_available", { p_name: name }, false)) !== false; }
+    catch (e) { if (e.offline || e.code !== "PGRST202") throw e; return true; }
+  }
 
   // One anonymous signal per device at first launch of the installed app (no account needed).
   // Kept until the server answers, so an offline first launch is reported later.
@@ -180,6 +185,6 @@
   window.addEventListener("online", () => connect());
   NT.online = {
     enabled, GLOBAL_MODES, submit, flush, leaderboard, overall, profile, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length,
-    connect, connected, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave,
+    connect, connected, nameFree, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave,
   };
 })();
