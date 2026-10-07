@@ -190,6 +190,15 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 grant execute on function public.name_available(text) to anon, authenticated;
 
+-- Nombre de personnes venues : un compte (anonyme ou protégé) est créé automatiquement
+-- par appareil au premier lancement en ligne. Affiché sur le menu du jeu.
+create or replace function public.visitor_count()
+returns bigint language sql stable security definer set search_path = public, auth as $$
+  select count(*) from auth.users
+$$;
+revoke all on function public.visitor_count() from public;
+grant execute on function public.visitor_count() to anon, authenticated;
+
 -- ---------- classement ----------
 -- Top p_limit de la saison demandée (par défaut la saison en cours), plus la ligne du joueur
 -- qui appelle s'il est plus bas.

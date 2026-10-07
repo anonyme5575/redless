@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.9";
+  const VERSION = "3.10";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1971,6 +1971,7 @@
   async function refreshEventPill() {
     if (!NT.online.enabled || Date.now() - eventPillAt < 60000) return;
     eventPillAt = Date.now();
+    refreshVisitors();
     try {
       const info = await NT.online.eventInfo(), p = $("#rank-pill");
       if (!info) return;
@@ -1979,6 +1980,25 @@
       p.textContent = info.season === 0 ? "Bientôt" : `Saison ${info.season}`;
     } catch {}
   }
+  // « N joueurs sont venus » on the menu: last known value shown at once (offline too), refreshed
+  // with the event pill. Hidden if the server is older than the counter.
+  const VISITORS = "redless-visitors";
+  function showVisitors(n) {
+    const el = $("#visitors");
+    if (!(n > 0)) { el.hidden = true; return; }
+    $("#visitors-n").textContent = n.toLocaleString("fr-FR");
+    $("#visitors-label").textContent = n > 1 ? "joueurs sont venus" : "joueur est venu";
+    el.hidden = false;
+  }
+  async function refreshVisitors() {
+    try {
+      const n = await NT.online.visitors();
+      if (n === null) { try { localStorage.removeItem(VISITORS); } catch {} return showVisitors(0); }
+      try { localStorage.setItem(VISITORS, String(n)); } catch {}
+      showVisitors(n);
+    } catch {}
+  }
+  try { showVisitors(+localStorage.getItem(VISITORS) || 0); } catch {}
   // Automatic connection to the game server at startup (anonymous account, then queued scores).
   if (NT.online.enabled) NT.online.connect(S.name);
   setTimeout(() => $("#splash")?.remove(), 1000); // startup animation is over

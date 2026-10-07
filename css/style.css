@@ -433,6 +433,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .menu-actions .btn { padding-block: 11px; font-size: 13px; }
 .menu-actions .btn-go { font-size: 24px; padding-block: 12px; }
 .menu-actions.two .btn-go { grid-column: auto; }
+.visitors { margin: -4px 0 0; text-align: center; font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+.visitors b { color: var(--ink); font-size: 15px; margin-right: 2px; }
+.visitors i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; vertical-align: 1px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 2s ease-in-out infinite; }
 .pill { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 11px; color: var(--bg); background: var(--gold); letter-spacing: .04em; }
 
 /* special tiles */

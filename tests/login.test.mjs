@@ -12,6 +12,7 @@ function fakeSupabase(state) {
     state.calls.push(url.replace(/^https:\/\/[^/]+/, ""));
     if (state.offline) return route.abort();
     if (url.includes("/auth/v1/")) return route.fulfill({ json: { access_token: "t", refresh_token: "r", expires_in: 3600 } });
+    if (url.includes("/rpc/visitor_count")) return route.fulfill({ json: 1234 });
     if (url.includes("/rpc/name_available")) return route.fulfill({ json: JSON.parse(req.postData()).p_name.toLowerCase() !== "pris" });
     if (url.includes("/rpc/save_progress")) { state.save = JSON.parse(req.postData()).p_data; return route.fulfill({ json: null }); }
     if (url.includes("/rpc/load_progress")) return route.fulfill({ json: state.save ? [{ data: state.save, updated_at: new Date().toISOString() }] : [] });
@@ -52,6 +53,9 @@ try {
   await p.evaluate(() => { NT.S.coins = 777; localStorage.setItem("ntplr-save-v1", JSON.stringify(NT.S)); });
   await p.reload(); await p.wait(1200);
   check((await p.screen()) === "menu", "connecté : le jeu s'ouvre directement sur le menu");
+  await p.wait(800);
+  const visitors = (await p.textContent("#visitors")).replace(/\s/g, "");
+  check(await p.isVisible("#visitors") && visitors.includes("1234") && visitors.includes("joueurssontvenus"), "le menu affiche le nombre de joueurs venus");
 
   await p.click("#btn-settings"); await p.wait(400);
   st.offline = true;

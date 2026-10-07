@@ -66,6 +66,8 @@ L'**événement** démarre **7 jours après le 30e joueur**, puis le classement 
 
 Le pseudo est vérifié dès la création du compte (fonction `name_available` : relancer `supabase/schema.sql`). Sans compte, l'écran Connexion revient au plus une fois par semaine.
 
+**Compteur** : le menu affiche « N joueurs sont venus » (fonction `visitor_count` : nombre de comptes, un par appareil lancé en ligne depuis la v3.5 ; relancer `supabase/schema.sql`).
+
 **Statistiques** : `supabase/stats.sql` (installations, joueurs actifs, rétention J1/S1/M1, modes joués), à coller requête par requête dans le SQL Editor. Aucune donnée nouvelle collectée.
 
 **Tests** : `node tests/login.test.mjs` et `node tests/chaos.test.mjs` (Chromium + Playwright, Supabase simulé) ; lancés par GitHub Actions à chaque push.
