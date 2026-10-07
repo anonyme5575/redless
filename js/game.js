@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.12";
+  const VERSION = "3.13";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -2034,7 +2034,7 @@
   // The site publishes version.json (written at deploy from VERSION). If it is newer than this
   // copy, a bar offers « Mettre à jour »: the web app refreshes itself, the Android app downloads
   // the new APK (published by the GitHub workflow under the « latest » release).
-  const SITE = "https://redless.vercel.app/";
+  const SITE = "https://redless.taild80a87.ts.net/";
   const APK_URL = "https://github.com/anonyme5575/redless/releases/download/latest/redless.apk";
   const newer = (a, b) => {
     const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
