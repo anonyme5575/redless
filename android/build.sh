@@ -16,8 +16,8 @@ A="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$A")"
 T="$A/.tools"
 OUT="$A/build"
-VERSION_CODE="${VERSION_CODE:-23}"
-VERSION_NAME="${VERSION_NAME:-3.10}"
+VERSION_CODE="${VERSION_CODE:-24}"
+VERSION_NAME="${VERSION_NAME:-3.11}"
 
 [ -x "$T/aapt2" ] && [ -s "$T/bundletool.jar" ] || "$A/fetch-tools.sh"
 

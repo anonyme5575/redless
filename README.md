@@ -99,7 +99,7 @@ Publication : voir **`PUBLISHING.md`**. Tests sur téléphone : **`TESTS.md`**. 
 
 ## Droits
 
-Redless © 2026 anonyme5575, tous droits réservés. La musique « Sync or Die » est une œuvre originale protégée : aucune réutilisation sans autorisation écrite. Détails dans [`COPYRIGHT.md`](COPYRIGHT.md).
+Redless © 2026 MyBlackWhite, tous droits réservés. Les musiques « Sync or Die », « Every Scar A Shield » et « The Velvet Hour » sont des œuvres originales de MyBlackWhite, protégées : aucune réutilisation sans autorisation écrite. Détails dans [`COPYRIGHT.md`](COPYRIGHT.md).
 
 ## Structure
 
