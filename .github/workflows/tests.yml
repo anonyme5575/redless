@@ -26,3 +26,5 @@ jobs:
         run: node tests/login.test.mjs
       - name: Mode Chaos (rotation, événements, mini-jeu de la poule)
         run: node tests/chaos.test.mjs
+      - name: Tempo (départ lent, croissance exponentielle sans plafond)
+        run: node tests/tempo.test.mjs

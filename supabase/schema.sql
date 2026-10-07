@@ -123,8 +123,9 @@ begin
   if p_level is null or p_level < 1 or p_level > 300 then raise exception 'niveau invalide'; end if;
   if p_bpm is null or p_bpm < 40 or p_bpm > 260 then raise exception 'tempo invalide'; end if;
   if p_duration_ms is null or p_duration_ms < 3000 or p_duration_ms > 7200000 then raise exception 'durée invalide'; end if;
-  -- Plausibility: even a perfect player cannot score faster than ~25 points per second.
-  if p_score > p_duration_ms / 1000.0 * 25 + 60 then raise exception 'score invraisemblable'; end if;
+  -- Plausibility: even a perfect player cannot score faster than ~40 points per second
+  -- (the tempo has no ceiling: past the music's limit, tiles also fall between the beats).
+  if p_score > p_duration_ms / 1000.0 * 40 + 60 then raise exception 'score invraisemblable'; end if;
 
   select * into me from public.players where id = uid for update;
   if not found then

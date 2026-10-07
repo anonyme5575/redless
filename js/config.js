@@ -33,44 +33,47 @@ window.NT = window.NT || {};
   // Menu music: the original file, played as is (normal speed, untouched).
   const MENU_TRACK = "audio/sync-or-die-original.mp3";
 
-  // Each mode tunes the same engine. Levels raise the tempo; the tempo is the music's playback speed.
+  // Each mode tunes the same engine. The tempo starts slow (startBpm, shifted by the difficulty)
+  // and grows exponentially without end: it doubles every `double` seconds (shorter in harder
+  // difficulties) and each level adds bpmStep / 3 %. The music follows up to its own speed limit
+  // (2× the track); past it, tiles also fall between the beats, so the pace keeps rising.
   // feint: chance that a tile is a feint (turn / trap / blink), from a given level.
   // specials: blue / violet / black tiles from level 3. boss: a 15 s storm every 5 levels.
   const MODES = {
     classic: {
       name: "Classique", rule: "3 vies, ça accélère vite",
-      lives: 3, startBpm: 72, bpmStep: 9, greensPerLevel: 8,
+      lives: 3, startBpm: 60, bpmStep: 9, greensPerLevel: 8, double: 150,
       feint: { from: 2, base: 0.06, step: 0.04, max: 0.32 }, specials: true, boss: true,
     },
     chrono: {
       name: "Chrono", rule: "60 s pour marquer, rouge = −5 s",
-      lives: 0, time: 60, redPenalty: 5, startBpm: 80, bpmStep: 12, greensPerLevel: 7,
+      lives: 0, time: 60, redPenalty: 5, startBpm: 66, bpmStep: 12, greensPerLevel: 7, double: 45,
       feint: { from: 1, base: 0.12, step: 0.03, max: 0.3 }, specials: true,
     },
     sudden: {
       name: "Mort subite", rule: "1 seule vie, départ rapide",
-      lives: 1, startBpm: 95, bpmStep: 10, greensPerLevel: 8,
+      lives: 1, startBpm: 76, bpmStep: 10, greensPerLevel: 8, double: 120,
       feint: { from: 1, base: 0.15, step: 0.04, max: 0.35 }, specials: true, boss: true,
     },
     feint: {
       name: "Fintes", rule: "Les cases changent de couleur",
-      lives: 3, startBpm: 72, bpmStep: 8, greensPerLevel: 8,
+      lives: 3, startBpm: 60, bpmStep: 8, greensPerLevel: 8, double: 150,
       feint: { from: 1, base: 0.55, step: 0.04, max: 0.8 }, specials: true, boss: true,
     },
     expansion: {
       name: "Expansion", rule: "La grille s'agrandit à chaque palier",
-      lives: 3, startBpm: 72, bpmStep: 8, greensPerLevel: 6,
+      lives: 3, startBpm: 60, bpmStep: 8, greensPerLevel: 6, double: 150,
       feint: { from: 4, base: 0.08, step: 0.03, max: 0.3 }, specials: true,
       grids: [[2, 3], [3, 3], [3, 4], [4, 4], [4, 5], [4, 6], [5, 6], [5, 7], [6, 7], [6, 8], [7, 9]],
     },
     rhythm: {
       name: "Rythme", rule: "Touche quand l'anneau se referme",
-      lives: 3, startBpm: 80, bpmStep: 6, greensPerLevel: 10, rhythm: true,
+      lives: 3, startBpm: 64, bpmStep: 6, greensPerLevel: 10, double: 160, rhythm: true,
       feint: { from: 99, base: 0, step: 0, max: 0 },
     },
     mirror: {
       name: "Miroir", rule: "La couleur à toucher s'inverse tous les 16 temps",
-      lives: 3, startBpm: 76, bpmStep: 8, greensPerLevel: 8, mirror: true,
+      lives: 3, startBpm: 62, bpmStep: 8, greensPerLevel: 8, double: 150, mirror: true,
       feint: { from: 99, base: 0, step: 0, max: 0 },
     },
     // Everything moves: the board spins, flips over (recto verso), zooms in and out, changes size,
@@ -78,18 +81,18 @@ window.NT = window.NT || {};
     // teleports the player into the chicken mini-game (jump over the trees).
     chaos: {
       name: "Chaos", rule: "Ça tourne, se retourne, tremble, se mélange… et téléportation à la ferme",
-      lives: 3, startBpm: 72, bpmStep: 7, greensPerLevel: 8, chaos: true,
+      lives: 3, startBpm: 60, bpmStep: 7, greensPerLevel: 8, double: 140, chaos: true,
       feint: { from: 3, base: 0.05, step: 0.03, max: 0.25 }, specials: true,
     },
     // Not shown in the mode list: same rules as Classique, but every spawn comes from a seed.
     daily: {
       name: "Défi du jour", rule: "La même partie pour tout le monde aujourd'hui", hidden: true, seeded: true,
-      lives: 3, startBpm: 72, bpmStep: 9, greensPerLevel: 8,
+      lives: 3, startBpm: 60, bpmStep: 9, greensPerLevel: 8, double: 150,
       feint: { from: 2, base: 0.06, step: 0.04, max: 0.32 }, specials: true, boss: true,
     },
     duel: {
       name: "Duel", rule: "La même partie que ton adversaire", hidden: true, seeded: true,
-      lives: 3, startBpm: 72, bpmStep: 9, greensPerLevel: 8,
+      lives: 3, startBpm: 60, bpmStep: 9, greensPerLevel: 8, double: 150,
       feint: { from: 2, base: 0.06, step: 0.04, max: 0.32 }, specials: true, boss: true,
     },
   };
@@ -240,9 +243,7 @@ window.NT = window.NT || {};
     TRACKS, MENU_TRACK, MODES, CATALOG, RANKS, MISSIONS, DIFFICULTIES,
     MODE_IDS: Object.keys(MODES).filter((id) => !MODES[id].hidden),
     DEFAULT_GRID: [4, 6],
-    MAX_BPM: 200,   // = the track played at 2x
-    GLIDE: 7,       // BPM per second: the tempo slides to its new value instead of jumping
-    CREEP: 0.25,    // BPM per second added between levels, so the music never stops speeding up
+    GLIDE: 0.06,    // share of the tempo per second: a level's jump slides in instead of jumping
     BOSS_MS: 15000,
     CHAOS_GRIDS: [[3, 3], [3, 4], [4, 4], [4, 5], [5, 5], [5, 6], [6, 6]],
     TELEPORT_EVERY: 3, // levels
