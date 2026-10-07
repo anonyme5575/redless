@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.5";
+  const VERSION = "3.6";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1390,8 +1390,33 @@
       ? `Protégé : ${maskEmail(mail)} · ${pushedAt() ? "sauvegardé le " + clock(pushedAt()) : "pas encore sauvegardé"}`
       : "Non protégé";
     $("#btn-acct-protect").textContent = mail ? "Sauvegarder" : "Protéger";
+    $("#btn-acct-recover").hidden = !!mail;
+    $("#logout-row").hidden = !mail;
+    logoutArmed = false; $("#btn-logout").textContent = "Se déconnecter"; $("#logout-hint").textContent = "Progression sauvegardée en ligne";
     acct = null; $("#acct-form").hidden = true;
   }
+  // Log out: the progress is saved online first, then this phone goes back to a fresh start
+  // (device settings kept) and shows the login screen. Offline, nothing happens: nothing is lost.
+  let logoutArmed = false, logoutTimer = 0;
+  $("#btn-logout").onclick = async () => {
+    if (!logoutArmed) {
+      logoutArmed = true; $("#btn-logout").textContent = "Confirmer";
+      $("#logout-hint").textContent = "Touche encore : ce téléphone repart de zéro";
+      clearTimeout(logoutTimer); logoutTimer = setTimeout(() => current === "settings" && renderAccount(), 4000);
+      return;
+    }
+    clearTimeout(logoutTimer);
+    $("#btn-logout").disabled = true;
+    try {
+      if (!(await pushNow())) { renderAccount(); return toast("Sauvegarde impossible (pas de connexion) : reste connecté pour ne rien perdre"); }
+      clearTimeout(pushTimer); pushTimer = 0;
+      NT.online.logout();
+      const device = { tutorialDone: true }; LOCAL_ONLY.forEach((k) => (device[k] = S[k]));
+      try { localStorage.setItem(KEY, JSON.stringify(device)); localStorage.removeItem(PUSHED); } catch {}
+      toast("Déconnecté");
+      setTimeout(() => location.reload(), 700);
+    } finally { $("#btn-logout").disabled = false; }
+  };
   function acctStep(mode, step, email = "") {
     acct = { mode, step, email };
     const f = $("#acct-form"); f.hidden = false;
