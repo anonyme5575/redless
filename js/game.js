@@ -1,10 +1,10 @@
 (() => {
   "use strict";
-  const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DIFFICULTIES, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS, CHAOS_GRIDS, TELEPORT_EVERY, MINI_MS } = NT.cfg;
+  const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DIFFICULTIES, DEFAULT_GRID, GLIDE, BOSS_MS, FREEZE_MS, CHAOS_GRIDS, TELEPORT_EVERY, MINI_MS } = NT.cfg;
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.11";
+  const VERSION = "3.12";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -245,7 +245,8 @@
   // A mode adjusted by a difficulty (or by a campaign level): tempo, feints, lives.
   function tuned(M, t) {
     return {
-      ...M, startBpm: Math.max(50, M.startBpm + t.bpm), bpmStep: M.bpmStep * t.step,
+      ...M, startBpm: Math.max(40, M.startBpm + t.bpm), bpmStep: M.bpmStep * t.step,
+      double: (M.double || 150) / t.step, // seconds for the tempo to double
       lives: M.lives ? Math.max(1, M.lives + t.lives) : 0,
       feint: { ...M.feint, base: Math.min(0.85, M.feint.base * t.feint), step: M.feint.step * t.feint, max: Math.min(0.85, M.feint.max * t.feint) },
     };
@@ -265,7 +266,7 @@
       official: modeId === "daily" && !(S.daily.date === todayKey() && S.daily.score !== null),
       running: false, paused: false, over: false,
       score: 0, combo: 0, maxCombo: 0, lives: M.lives, coins: 0, greens: 0,
-      level: 1, bpm: M.startBpm, bpmNow: M.startBpm, bpmShown: 0, rateBpm: 0,
+      level: 1, bpm: M.startBpm, bpmNow: M.startBpm, bpmShown: 0, rateBpm: 0, tempoT: 0, sub: 1, subKey: null,
       beatN: 0, beatKey: null, loop: 0, pos: 0, fbPos: 0, clock: 0, phase: 0,
       timeLeft: M.time ? M.time * 1000 : 0,
       tiles: new Map(), grid: M.grids ? 0 : -1,
@@ -290,7 +291,17 @@
     renderHud();
   }
   const effBpm = () => (G.frozen ? G.bpmNow * 0.7 : G.bpmNow);
-  const spb = () => 60 / effBpm(); // seconds per beat at the tempo playing now
+  const spb = () => 60 / effBpm(); // seconds per beat at the game tempo (tile timings)
+  // Exponential tempo: doubles every M.double seconds, +bpmStep/3 % per level, no ceiling.
+  const targetBpm = () => G.M.startBpm * Math.pow(2, G.tempoT / G.M.double) * Math.pow(1 + G.M.bpmStep / 300, G.level - 1);
+  // The beat clock (music speed) stays within what the track can play (½× to 2×; synth 30-240).
+  // Past it, the game tempo is reached by also spawning between the beats (see density()).
+  function clockBpm() {
+    const tr = TRACKS[S.track], lo = tr && tr.src ? tr.bpm * 0.5 : 30, hi = tr && tr.src ? tr.bpm * 2 : 240;
+    return Math.max(lo, Math.min(hi, effBpm()));
+  }
+  const cspb = () => 60 / clockBpm(); // seconds per beat of the beat clock
+  const density = () => effBpm() / clockBpm();
   const THRESHOLDS = [0, 10, 25, 50];
   const multiplier = () => (G.combo >= 50 ? 4 : G.combo >= 25 ? 3 : G.combo >= 10 ? 2 : 1);
 
@@ -435,7 +446,7 @@
   window.addEventListener("pointercancel", releaseHold);
 
   function judgeRhythm(i, t) {
-    const ms = (beatPos() - t.target) * spb() * 1000, a = Math.abs(ms);
+    const ms = (beatPos() - t.target) * cspb() * 1000, a = Math.abs(ms);
     let pts, label, cls = "";
     if (a <= 70) { pts = 3; label = "Parfait"; cls = "perfect"; G.perfects++; sfx("perfect"); haptic("perfect"); }
     else if (a <= 150) { pts = 2; label = "Bien"; }
@@ -505,7 +516,7 @@
   // ---------- levels, boss, mirror ----------
   function levelUp() {
     G.level++;
-    G.bpm = Math.min(MAX_BPM, Math.round(G.bpm) + G.M.bpmStep);
+    G.bpm = targetBpm();
     sfx("riser"); haptic("level");
     if (G.M.grids && G.grid < G.M.grids.length - 1) {
       G.grid++;
@@ -516,7 +527,7 @@
     } else if (G.chaos) chaosLevel();
     else if (G.M.boss && G.level % 5 === 0 && !G.boss) startBoss();
     else if (G.level === G.M.feint.from && G.M.feint.from > 1) banner("Fintes", "les cases mentent", true);
-    else banner(G.bpm >= MAX_BPM ? "Tempo max" : `${Math.round(G.bpm)} BPM`, `Niveau ${G.level}`);
+    else banner(`${Math.round(G.bpm)} BPM`, `Niveau ${G.level}`);
     renderHud();
   }
   function startBoss() {
@@ -646,7 +657,7 @@
     clearTiles(); releaseHold(); endEvent();
     miniEl.hidden = false;
     G.mini = { t: 0, grains: 0 };
-    miniGame.start(1 + Math.max(0, effBpm() - 72) * 0.006);
+    miniGame.start(1 + Math.max(0, Math.log2(effBpm() / 60)) * 0.35);
     sfx("riser"); haptic("special");
   }
   function hideMini() { miniEl.hidden = true; }
@@ -684,21 +695,35 @@
   function frame(now) {
     const dt = Math.min(50, now - lastFrame); lastFrame = now;
     if (G && G.running && !G.paused) tick(dt);
-    if (!reduceMotion) fx.drawRain(dt, G && G.running && !G.paused ? effBpm() / 100 : 0.8);
+    if (!reduceMotion) fx.drawRain(dt, G && G.running && !G.paused ? Math.min(4, effBpm() / 100) : 0.8);
     fx.drawFx(dt);
     if (current === "menu") demoTick(now);
     if (current === "tuto") tutoTick(dt);
     requestAnimationFrame(frame);
   }
   function onBeat() {
-    if (!(G.trackOn && Music.playing)) Synth.beat(G.beatN, spb(), G.level);
+    if (!(G.trackOn && Music.playing)) Synth.beat(G.beatN, cspb(), G.level);
     if (G.M.mirror && G.beatN > 0) mirrorBeat();
     if (G.chaos && !G.mini) chaosBeat();
     if (G.mini) { G.beatN++; return; } // away in the mini-game: no tiles
+    // Slower than the music can go (start of a run): some beats stay empty.
+    const skip = G.rng() >= density();
     const n = spawnsThisBeat();
-    for (let k = 0; k < n; k++) spawn();
+    if (!skip) for (let k = 0; k < n; k++) spawn();
     G.beatN++;
     if (!reduceMotion) { boardEl.classList.add("pulse"); setTimeout(() => boardEl.classList.remove("pulse"), 90); }
+  }
+  // Faster than the music can go: tiles also fall on the subdivisions of the beat (8ths, 16ths…),
+  // as many as needed to reach the game tempo.
+  function subBeats(pos) {
+    const d = density(), sub = Math.max(1, Math.ceil(d - 1e-6)), key = Math.floor(pos * sub);
+    if (sub !== G.sub) { G.sub = sub; G.subKey = key; return; }
+    if (key === G.subKey) return;
+    G.subKey = key;
+    if (sub < 2 || key % sub === 0 || G.mini || G.M.rhythm) return;
+    if (G.rng() >= (d - 1) / (sub - 1)) return;
+    const n = spawnsThisBeat();
+    for (let k = 0; k < n; k++) spawn();
   }
   function tick(dt) {
     G.clock += dt;
@@ -711,16 +736,17 @@
     }
     if (frozen) for (const t of G.tiles.values()) t.born += dt;
     else {
-      // The tempo creeps up continuously and glides to each new level's value.
-      G.bpm = Math.min(MAX_BPM, G.bpm + CREEP * dt / 1000);
-      if (G.bpmNow < G.bpm) G.bpmNow = Math.min(G.bpm, G.bpmNow + GLIDE * dt / 1000);
+      // The tempo grows exponentially with time and glides to each new level's value.
+      G.tempoT += dt / 1000;
+      G.bpm = targetBpm();
+      if (G.bpmNow < G.bpm) G.bpmNow = Math.min(G.bpm, G.bpmNow + Math.max(4, G.bpmNow * GLIDE) * dt / 1000);
     }
     if (Math.abs(effBpm() - G.rateBpm) >= 0.2) {
-      G.rateBpm = effBpm(); Music.setBpm(effBpm());
+      G.rateBpm = effBpm(); Music.setBpm(clockBpm());
       if (Math.round(effBpm()) !== G.bpmShown) {
         G.bpmShown = Math.round(effBpm());
         bpmEl.textContent = G.bpmShown;
-        $("#sweep").style.setProperty("--bar", (4 * spb()).toFixed(2) + "s");
+        $("#sweep").style.setProperty("--bar", (4 * cspb()).toFixed(2) + "s");
       }
     }
     if (G.M.time) {
@@ -736,12 +762,13 @@
       comboEl.textContent = `Boss ${Math.max(0, left)} s`;
       if (G.clock >= G.boss.until) endBoss();
     }
-    if (!(G.trackOn && Music.playing)) G.fbPos += dt / 1000 / spb();
+    if (!(G.trackOn && Music.playing)) G.fbPos += dt / 1000 / cspb();
     const pos = beatPos();
     if (G.trackOn && Music.playing && Music.loops !== G.loop) { G.loop = Music.loops; if (G.M.rhythm) clearTiles(); }
     G.pos = pos;
     const key = Math.floor(pos);
     if (pos >= 0 && key !== G.beatKey) { G.beatKey = key; onBeat(); }
+    if (pos >= 0 && G.running) subBeats(pos);
     G.phase = pos - Math.floor(pos);
     beatEl.style.transform = `scaleX(${1 - G.phase})`;
 
@@ -954,7 +981,7 @@
     show("play");
     fx.sizeCanvases();
     countdown(async () => {
-      G.trackOn = !!TRACKS[S.track].src && (await Music.start(S.track, effBpm()));
+      G.trackOn = !!TRACKS[S.track].src && (await Music.start(S.track, clockBpm()));
       G.rateBpm = effBpm();
       G.running = true;
     });

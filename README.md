@@ -19,22 +19,22 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 - **Spéciales** (dès le niveau 3) : bleue = tempo ralenti 3 s ; violette = efface les rouges ; noire = garder le doigt appuyé. Rater une bleue ou une violette ne coûte rien ; rater une noire coûte une vie, comme une verte.
 - **Boss** tous les 5 niveaux (Classique, Mort subite, Fintes, Défi, Duel) : 15 s de fintes et de cases en plus ; y survivre rapporte +50 points et +20 crédits.
 - **Combo** : x2 à 10, x3 à 25, x4 à 50 (jauge Bouclier).
-- **Tempo** : la musique est l'horloge. Départ lent (72 BPM, morceau à x0,72), +15 BPM par minute en continu, et un saut à chaque palier, joué en glissando, jusqu'à 200 BPM (x2, hauteur conservée).
+- **Tempo** : départ lent (60 BPM en Classique Normal ; Facile −12, Difficile +12, Hardcore +24, Impossible +40), puis croissance **exponentielle sans plafond** : le tempo double toutes les 2 min 30 en Normal (÷0,7 en Facile, ÷1,7 en Impossible ; 45 s en Chrono), et chaque palier ajoute +3 %. La musique est l'horloge et suit jusqu'à 2× sa vitesse (hauteur conservée) ; au-delà, elle reste à 2× et les cases tombent aussi entre les temps (croches, doubles croches…), donc la cadence continue de monter.
 
 ## Modes
 
 | Mode | Vies | Départ | Particularité |
 |---|---|---|---|
-| Classique | 3 | 72 BPM | +9 BPM tous les 8 verts, fintes dès le niveau 2 |
-| Chrono | – | 80 BPM | 60 s, rouge = −5 s |
-| Mort subite | 1 | 95 BPM | une erreur et c'est fini |
-| Fintes | 3 | 72 BPM | plus de la moitié des cases sont des fintes |
-| Expansion | 3 | 72 BPM | la grille passe de 2×3 à 7×9 |
-| Rythme | 3 | 80 BPM | toucher quand l'anneau se referme : Parfait (±70 ms), Bien (±150 ms) |
-| Miroir | 3 | 76 BPM | la couleur à toucher s'inverse tous les 16 temps |
-| Chaos | 3 | 72 BPM | Plateau qui tourne (de plus en plus vite), se retourne (recto verso) tous les 16 temps, zoome, change de taille à chaque palier, plus un événement surprise toutes les quelques mesures : Séisme, Tornade, Mélange (les cases changent de place), Dérive, Gelée, Brouillard, Microscope, Géant, Déluge, Retourne-veste. Tous les 3 paliers : téléportation à la ferme, 10 s de mini-jeu où la poule saute par-dessus les arbres (arbre = −1 vie, grain = +2, survie = +15 points et +5 crédits) |
-| Défi du jour | 3 | 72 BPM | même suite de cases pour tous, un essai officiel par jour |
-| Duel | 3 | 72 BPM | un code de 5 caractères = la même partie pour les deux joueurs |
+| Classique | 3 | 60 BPM | palier tous les 8 verts, fintes dès le niveau 2 |
+| Chrono | – | 66 BPM | 60 s, rouge = −5 s |
+| Mort subite | 1 | 76 BPM | une erreur et c'est fini |
+| Fintes | 3 | 60 BPM | plus de la moitié des cases sont des fintes |
+| Expansion | 3 | 60 BPM | la grille passe de 2×3 à 7×9 |
+| Rythme | 3 | 64 BPM | toucher quand l'anneau se referme : Parfait (±70 ms), Bien (±150 ms) |
+| Miroir | 3 | 62 BPM | la couleur à toucher s'inverse tous les 16 temps |
+| Chaos | 3 | 60 BPM | Plateau qui tourne (de plus en plus vite), se retourne (recto verso) tous les 16 temps, zoome, change de taille à chaque palier, plus un événement surprise toutes les quelques mesures : Séisme, Tornade, Mélange (les cases changent de place), Dérive, Gelée, Brouillard, Microscope, Géant, Déluge, Retourne-veste. Tous les 3 paliers : téléportation à la ferme, 10 s de mini-jeu où la poule saute par-dessus les arbres (arbre = −1 vie, grain = +2, survie = +15 points et +5 crédits) |
+| Défi du jour | 3 | 60 BPM | même suite de cases pour tous, un essai officiel par jour |
+| Duel | 3 | 60 BPM | un code de 5 caractères = la même partie pour les deux joueurs |
 
 ## Niveaux (campagne)
 
@@ -70,7 +70,7 @@ Le pseudo est vérifié dès la création du compte (fonction `name_available` :
 
 **Statistiques** : `supabase/stats.sql` (installations, joueurs actifs, rétention J1/S1/M1, modes joués), à coller requête par requête dans le SQL Editor. Aucune donnée nouvelle collectée.
 
-**Tests** : `node tests/login.test.mjs` et `node tests/chaos.test.mjs` (Chromium + Playwright, Supabase simulé) ; lancés par GitHub Actions à chaque push.
+**Tests** : `node tests/login.test.mjs`, `node tests/chaos.test.mjs` et `node tests/tempo.test.mjs` (Chromium + Playwright, Supabase simulé) ; lancés par GitHub Actions à chaque push.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 
 ## Mises à jour
