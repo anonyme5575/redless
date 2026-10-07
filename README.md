@@ -58,6 +58,8 @@ Dans **Modes de jeu** : Facile, Normal, Difficile, Hardcore, Impossible (tempo, 
 
 Via Supabase (offre gratuite) : un pseudo, un identifiant anonyme par téléphone, des scores contrôlés côté serveur. En option, le joueur **protège son compte** avec son e-mail (code reçu par e-mail, sans mot de passe) : sa progression est sauvegardée en ligne et il la retrouve sur un autre téléphone.
 L'**événement** démarre **7 jours après le 30e joueur**, puis le classement **repart de zéro chaque mois** (saison 1, 2, 3…). Le classement est général : une ligne par joueur, avec le total de ses meilleurs scores de la saison dans tous les modes ; toucher un joueur ouvre son profil (ses scores mode par mode). Sans pseudo, le jeu en donne un automatiquement (« Pilote-1234 »), modifiable dans Réglages. Avant l'événement : pré-saison.
+
+**Connexion** : au lancement, tant que le joueur n'a pas de compte, l'écran « Connexion » s'affiche : créer un compte (pseudo + e-mail, code reçu par e-mail, pas de mot de passe), se connecter à un compte existant (la progression en ligne remplace celle du téléphone), ou jouer sans compte. Dans tous les cas, le jeu se connecte tout seul au serveur au démarrage (compte anonyme) ; l'adresse du serveur n'est plus modifiable dans le jeu.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 
 ## Mises à jour

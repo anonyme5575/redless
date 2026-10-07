@@ -33,9 +33,7 @@ Ces deux valeurs sont **publiques par conception** : elles sont dans le jeu et n
 ## 5. Les mettre dans le jeu
 **Le plus simple (Windows)** : double-clic sur **`connecter-supabase.cmd`** à la racine du projet. Colle l'adresse et la clé (ou tout le texte copié depuis Supabase, il trie), le script vérifie chaque étape, te dit quoi corriger, propose de copier `schema.sql` si les tables manquent, puis écrit `js/online-config.js`.
 
-**Pour tester sur ton téléphone sans rien reconstruire** : dans le jeu, **Réglages → Serveur du classement** :
-- **Tester** vérifie la connexion point par point (adresse, clé, connexion anonyme, tables) et explique comment réparer ;
-- **Modifier** permet de coller une autre adresse/clé. Elle n'est gardée que sur ce téléphone ; **Par défaut** revient à celle du jeu.
+Le serveur n'est plus réglable dans le jeu : chaque joueur se connecte automatiquement à celui de `js/online-config.js` au lancement (compte anonyme créé en silence). Un serveur enregistré sur un téléphone par une ancienne version est oublié.
 
 À la main, dans [`js/online-config.js`](../js/online-config.js) :
 ```js
