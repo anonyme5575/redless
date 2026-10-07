@@ -9,34 +9,18 @@
   const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
-  // Server: the one saved in Réglages (this device only) wins over js/online-config.js.
-  const builtIn = window.REDLESS_ONLINE || {};
-  const saved = read(SERVER, null);
-  const cfg = saved && saved.url && saved.key ? saved : builtIn;
+  // Server: always the one built into the game (js/online-config.js). A server saved on this
+  // device by an older version is dropped, with the account and queue that belonged to it.
+  const cfg = window.REDLESS_ONLINE || {};
   const URL_ = (cfg.url || "").replace(/\/+$/, "");
+  const saved = read(SERVER, null);
+  if (saved) {
+    const other = (saved.url || "").replace(/\/+$/, "") !== URL_;
+    try { [SERVER, ...(other ? [AUTH, QUEUE, INSTALL, EMAIL] : [])].forEach((k) => localStorage.removeItem(k)); } catch {}
+  }
   const KEY = cfg.key || "";
   const enabled = !!(URL_ && KEY);
   let session = read(AUTH, null);
-
-  // Finds the project URL and the public key in anything pasted: the two values, the
-  // dashboard address, a .env file, online-config.js… Secret keys are flagged, never kept.
-  function parseServer(text) {
-    const t = String(text || "");
-    let url = (t.match(/https:\/\/[a-z0-9-]+\.supabase\.(?:co|in)/i) || [])[0] || "";
-    const ref = (t.match(/supabase\.com\/dashboard\/project\/([a-z0-9]{20})/i) || [])[1];
-    if (!url && ref) url = `https://${ref.toLowerCase()}.supabase.co`;
-    if (!url && /^\s*[a-z0-9]{20}\s*$/i.test(t)) url = `https://${t.trim().toLowerCase()}.supabase.co`;
-    if (!url) url = (t.match(/https:\/\/[^\s"'`,;]+/) || [""])[0].replace(/\/+$/, "");
-    const secret = /sb_secret_/.test(t) || jwts(t).some((r) => r === "service_role");
-    const key = (t.match(/sb_publishable_[A-Za-z0-9_-]+/) || [])[0] ||
-                jwtList(t).find((j) => jwtRole(j) === "anon") || "";
-    return { url: url.toLowerCase(), key, secret };
-  }
-  const jwtList = (t) => t.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g) || [];
-  function jwtRole(j) {
-    try { return JSON.parse(atob(j.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).role || ""; } catch { return ""; }
-  }
-  const jwts = (t) => jwtList(t).map(jwtRole);
 
   async function http(path, body, token, method = "POST", base = URL_, key = KEY) {
     const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 9000);
@@ -144,7 +128,7 @@
     const c = e.errorCode || "", m = e.message || "";
     const msg =
       c === "otp_expired" || /expired|invalid.*token|token.*invalid/i.test(m) ? "Code faux ou expiré. Demande un nouveau code." :
-      c === "email_exists" || c === "user_already_exists" || /already.*(registered|exists)/i.test(m) ? "Cette adresse est déjà liée à un compte : utilise « Retrouver mon compte »." :
+      c === "email_exists" || c === "user_already_exists" || /already.*(registered|exists)/i.test(m) ? "Cette adresse a déjà un compte : choisis « J'ai déjà un compte » (ou « Retrouver » dans Réglages)." :
       c === "otp_disabled" || /signups not allowed/i.test(m) ? "Aucun compte avec cette adresse." :
       c === "anonymous_provider_disabled" || /anonymous sign-ins are disabled/i.test(m) ? "Connexion anonyme désactivée sur le serveur." :
       /rate limit|over_email_send_rate_limit|you can only request/i.test(c + " " + m) ? "Trop de codes demandés. Attends quelques minutes." :
@@ -183,62 +167,19 @@
   const pushSave = (data) => rpc("save_progress", { p_data: data }, true);
   async function pullSave() { const r = await rpc("load_progress", {}, true); return r && r[0]; }
 
-  // Step-by-step connection test, without creating anything on the server.
-  // Returns {ok, steps:[{ok, text, fix}]}; stops at the first blocking problem.
-  async function check(url = URL_, key = KEY) {
-    const steps = [];
-    const stop = (text, fix) => { steps.push({ ok: false, text, fix }); return { ok: false, steps }; };
-    url = (url || "").replace(/\/+$/, "");
-    if (!url) return stop("Adresse du projet manquante", "Supabase → Project Settings → API → Project URL.");
-    if (!/^https:\/\/[^/\s]+$/.test(url)) return stop("Adresse inattendue : " + url, "Elle doit ressembler à https://xxxx.supabase.co");
-    if (!key) return stop("Clé publique manquante", "Supabase → Project Settings → API Keys → clé « publishable » (ou « anon »).");
-    if (/^sb_secret_/.test(key) || jwtRole(key) === "service_role")
-      return stop("C'est la clé SECRÈTE : ne la mets jamais dans le jeu", "Prends la clé « publishable » (sb_publishable_…) ou « anon ».");
-    steps.push({ ok: true, text: "Adresse et clé bien formées" });
-
-    let settings;
-    try { settings = await http("/auth/v1/settings", undefined, null, "GET", url, key); }
-    catch (e) {
-      if (e.offline) return stop("Serveur injoignable", "Vérifie ta connexion et l'adresse. Si le projet est en pause (inactif 7 jours), ouvre-le sur supabase.com et touche « Restore ».");
-      if (e.status === 401 || /api key/i.test(e.message)) return stop("Clé refusée par le serveur", "Recopie la clé publishable de CE projet (elle a peut-être été régénérée).");
-      return stop("Réponse inattendue du serveur (" + (e.status || e.message) + ")", "Vérifie l'adresse du projet.");
-    }
-    steps.push({ ok: true, text: "Serveur joint, clé acceptée" });
-    const anon = settings && settings.external && settings.external.anonymous_users;
-    if (anon === false) return stop("Connexion anonyme désactivée", "Authentication → Sign In / Providers → active « Allow anonymous sign-ins » → Save.");
-    steps.push({ ok: true, text: "Connexion anonyme des joueurs autorisée" });
-
-    try {
-      const r = await http("/rest/v1/rpc/event_info", {}, null, "POST", url, key);
-      const info = r && r[0];
-      steps.push({ ok: true, text: "Tables du classement installées" + (info && info.players != null ? ` (${info.players} joueur${info.players > 1 ? "s" : ""})` : "") });
-    } catch (e) {
-      if (e.offline) return stop("Serveur injoignable", "Réessaie dans un instant.");
-      if (e.code === "PGRST202" || e.status === 404) return stop("Tables du classement absentes", "SQL Editor → New query → colle tout supabase/schema.sql → Run.");
-      return stop("Erreur des tables : " + e.message, "Relance supabase/schema.sql dans le SQL Editor.");
-    }
-    // The online save exists if the server knows the function (calling it without an account is refused).
-    try { await http("/rest/v1/rpc/load_progress", {}, null, "POST", url, key); }
-    catch (e) {
-      if (e.code === "PGRST202") return stop("Sauvegarde en ligne des comptes absente", "SQL Editor → relance tout supabase/schema.sql → Run.");
-    }
-    steps.push({ ok: true, text: "Sauvegarde en ligne des comptes installée" });
-    return { ok: true, steps };
+  // Automatic connection at startup: creates (or refreshes) this device's anonymous account,
+  // then sends the scores waiting offline. Silent: the game works the same without network.
+  async function connect(name) {
+    if (!enabled) return false;
+    try { await token(); } catch { return false; }
+    flush(name);
+    return true;
   }
+  const connected = () => !!(session && session.access_token);
 
-  // Saves a server for this device (null = back to the one built into the game), then
-  // forgets the anonymous account and queue tied to the previous server.
-  function setServer(s) {
-    try {
-      if (s) localStorage.setItem(SERVER, JSON.stringify({ url: s.url.replace(/\/+$/, ""), key: s.key }));
-      else localStorage.removeItem(SERVER);
-      [AUTH, QUEUE, INSTALL, EMAIL].forEach((k) => localStorage.removeItem(k));
-    } catch {}
-  }
-
-  window.addEventListener("online", () => flush());
+  window.addEventListener("online", () => connect());
   NT.online = {
     enabled, GLOBAL_MODES, submit, flush, leaderboard, overall, profile, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length,
-    check, parseServer, setServer, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave, url: URL_, key: KEY, custom: cfg === saved, builtIn: { url: builtIn.url || "", key: builtIn.key || "" },
+    connect, connected, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave,
   };
 })();
