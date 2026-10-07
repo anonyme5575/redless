@@ -1,28 +1,9 @@
 // Test du parcours de connexion dans un vrai navigateur (Chromium, via Playwright).
 // Le serveur Supabase est simulé : aucun appel réseau réel, aucun compte créé.
 // Lancement : node tests/login.test.mjs   (CI : .github/workflows/tests.yml)
-import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { execSync } from "node:child_process";
-import { createRequire } from "node:module";
-import { extname, join, normalize } from "node:path";
+import { chromium, startServer } from "./helpers.mjs";
 
-const ROOT = new URL("..", import.meta.url).pathname;
-let chromium;
-try { ({ chromium } = await import("playwright")); }
-catch { ({ chromium } = createRequire(import.meta.url)(join(execSync("npm root -g").toString().trim(), "playwright"))); }
-
-// Static server for the game files.
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".webmanifest": "application/manifest+json", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2", ".mp3": "audio/mpeg" };
-const server = createServer(async (req, res) => {
-  let path = normalize(decodeURIComponent(new URL(req.url, "http://x").pathname)).replace(/^(\.\.[/\\])+/, "");
-  if (path.endsWith("/")) path += "index.html";
-  try {
-    const body = await readFile(join(ROOT, path));
-    res.writeHead(200, { "Content-Type": TYPES[extname(path)] || "application/octet-stream" }).end(body);
-  } catch { res.writeHead(404).end(); }
-}).listen(0);
-const SITE = `http://localhost:${server.address().port}/`;
+const server = await startServer(), SITE = server.url;
 
 // Fake Supabase: auth always accepts, « Pris » is a taken pseudo, saves are kept in memory.
 function fakeSupabase(state) {

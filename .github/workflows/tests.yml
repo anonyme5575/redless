@@ -24,3 +24,5 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Parcours de connexion (Supabase simulé)
         run: node tests/login.test.mjs
+      - name: Mode Chaos (rotation, événements, mini-jeu de la poule)
+        run: node tests/chaos.test.mjs

@@ -125,11 +125,11 @@
       </dl>
       <button class="icon-btn" id="btn-pause" aria-label="Pause"></button>
     </div>
-    <!-- CHAOS: the sloth mini-game, played over the board after a teleport -->
-    <div class="sloth" id="sloth" hidden>
-      <div class="sloth-head"><span class="label">Téléportation</span><b class="num" id="sloth-left">10</b></div>
-      <canvas id="sloth-cv" aria-label="Mini-jeu : le paresseux saute par-dessus les arbres"></canvas>
-      <p class="sloth-help">Touche l'écran pour sauter par-dessus les arbres</p>
+    <!-- CHAOS: the chicken mini-game (js/minigame.js), played over the board after a teleport -->
+    <div class="mini" id="mini" hidden>
+      <div class="mini-head"><span class="label">Téléportation · la ferme</span><b class="num" id="mini-left">10</b></div>
+      <canvas id="mini-cv" aria-label="Mini-jeu : la poule saute par-dessus les arbres"></canvas>
+      <p class="mini-help">Touche l'écran pour sauter · attrape les grains (+2)</p>
     </div>
     <div class="banner" id="banner"></div>
     <div class="countdown" id="countdown" hidden></div>
@@ -371,7 +371,7 @@
       <div class="set-row"><span>Confidentialité</span><button class="btn small" id="btn-privacy" data-frame="sm">Lire</button></div>
       <div class="set-row"><span>Progression<small id="reset-hint">Crédits, records, achats</small></span><button class="btn small danger" id="btn-reset" data-frame="sm">Effacer</button></div>
     </div>
-    <p class="note">Version <span id="app-version">3.8</span></p>
+    <p class="note">Version <span id="app-version">3.9</span></p>
     <p class="note credits">Musique : « Sync or Die » © 2026 anonyme5575. Tous droits réservés, reproduction interdite sans autorisation.<br>17 musiques libres (CC0, OpenGameArt) : Alexander Ehlers, Fupi, G_P, da9elb, Centurion_of_war, TAD. Merci !<br>Redless © 2026 anonyme5575.</p>
   </section>
 
@@ -449,6 +449,7 @@
 <script src="js/online.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/visuals.js"></script>
+<script src="js/minigame.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

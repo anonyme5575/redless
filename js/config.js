@@ -74,9 +74,10 @@ window.NT = window.NT || {};
       feint: { from: 99, base: 0, step: 0, max: 0 },
     },
     // Everything moves: the board spins, flips over (recto verso), zooms in and out, changes size,
-    // and every 3 levels teleports the player into the sloth mini-game (jump over the trees).
+    // throws a random event every few bars (quake, tornado, shuffle…), and every 3 levels
+    // teleports the player into the chicken mini-game (jump over the trees).
     chaos: {
-      name: "Chaos", rule: "Ça tourne, ça se retourne, ça zoome… et téléportation",
+      name: "Chaos", rule: "Ça tourne, se retourne, tremble, se mélange… et téléportation à la ferme",
       lives: 3, startBpm: 72, bpmStep: 7, greensPerLevel: 8, chaos: true,
       feint: { from: 3, base: 0.05, step: 0.03, max: 0.25 }, specials: true,
     },
@@ -245,7 +246,7 @@ window.NT = window.NT || {};
     BOSS_MS: 15000,
     CHAOS_GRIDS: [[3, 3], [3, 4], [4, 4], [4, 5], [5, 5], [5, 6], [6, 6]],
     TELEPORT_EVERY: 3, // levels
-    SLOTH_MS: 10000,
+    MINI_MS: 10000,
     FREEZE_MS: 3000,
   };
 })();
