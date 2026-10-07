@@ -1,28 +1,9 @@
 // Test du parcours de connexion dans un vrai navigateur (Chromium, via Playwright).
 // Le serveur Supabase est simulé : aucun appel réseau réel, aucun compte créé.
 // Lancement : node tests/login.test.mjs   (CI : .github/workflows/tests.yml)
-import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { execSync } from "node:child_process";
-import { createRequire } from "node:module";
-import { extname, join, normalize } from "node:path";
+import { chromium, startServer } from "./helpers.mjs";
 
-const ROOT = new URL("..", import.meta.url).pathname;
-let chromium;
-try { ({ chromium } = await import("playwright")); }
-catch { ({ chromium } = createRequire(import.meta.url)(join(execSync("npm root -g").toString().trim(), "playwright"))); }
-
-// Static server for the game files.
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".webmanifest": "application/manifest+json", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2", ".mp3": "audio/mpeg" };
-const server = createServer(async (req, res) => {
-  let path = normalize(decodeURIComponent(new URL(req.url, "http://x").pathname)).replace(/^(\.\.[/\\])+/, "");
-  if (path.endsWith("/")) path += "index.html";
-  try {
-    const body = await readFile(join(ROOT, path));
-    res.writeHead(200, { "Content-Type": TYPES[extname(path)] || "application/octet-stream" }).end(body);
-  } catch { res.writeHead(404).end(); }
-}).listen(0);
-const SITE = `http://localhost:${server.address().port}/`;
+const server = await startServer(), SITE = server.url;
 
 // Fake Supabase: auth always accepts, « Pris » is a taken pseudo, saves are kept in memory.
 function fakeSupabase(state) {
@@ -31,6 +12,7 @@ function fakeSupabase(state) {
     state.calls.push(url.replace(/^https:\/\/[^/]+/, ""));
     if (state.offline) return route.abort();
     if (url.includes("/auth/v1/")) return route.fulfill({ json: { access_token: "t", refresh_token: "r", expires_in: 3600 } });
+    if (url.includes("/rpc/visitor_count")) return route.fulfill({ json: 1234 });
     if (url.includes("/rpc/name_available")) return route.fulfill({ json: JSON.parse(req.postData()).p_name.toLowerCase() !== "pris" });
     if (url.includes("/rpc/save_progress")) { state.save = JSON.parse(req.postData()).p_data; return route.fulfill({ json: null }); }
     if (url.includes("/rpc/load_progress")) return route.fulfill({ json: state.save ? [{ data: state.save, updated_at: new Date().toISOString() }] : [] });
@@ -71,6 +53,9 @@ try {
   await p.evaluate(() => { NT.S.coins = 777; localStorage.setItem("ntplr-save-v1", JSON.stringify(NT.S)); });
   await p.reload(); await p.wait(1200);
   check((await p.screen()) === "menu", "connecté : le jeu s'ouvre directement sur le menu");
+  await p.wait(800);
+  const visitors = (await p.textContent("#visitors")).replace(/\s/g, "");
+  check(await p.isVisible("#visitors") && visitors.includes("1234") && visitors.includes("joueurssontvenus"), "le menu affiche le nombre de joueurs venus");
 
   await p.click("#btn-settings"); await p.wait(400);
   st.offline = true;

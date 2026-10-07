@@ -207,13 +207,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .board.chaos { flex: none; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); margin: auto; will-change: transform; }
 .board.chaos.verso .cell { background: color-mix(in srgb, var(--warn) 12%, transparent); }
 .board.chaos.verso .frame-svg .line { stroke: var(--warn); }
-/* Sloth mini-game */
-.sloth { position: absolute; inset: 0; z-index: 11; display: flex; flex-direction: column; gap: 8px; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px)); background: rgba(2, 8, 14, .92); touch-action: none; user-select: none; -webkit-user-select: none; }
-.sloth-head { display: flex; justify-content: space-between; align-items: baseline; }
-.sloth-head b { font-family: var(--font-display); font-size: 34px; color: var(--warn); }
-.sloth { justify-content: center; }
-.sloth canvas { flex: none; width: 100%; aspect-ratio: 4 / 3; max-height: 70%; border: 1px solid var(--holo-dim); }
-.sloth-help { margin: 0; text-align: center; color: var(--muted); font-size: 13px; letter-spacing: .08em; }
+/* Chaos events */
+.board.chaos.fog { filter: blur(2.2px) brightness(.8); }
+/* Chicken mini-game */
+.mini { position: absolute; inset: 0; z-index: 11; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px)); background: rgba(2, 8, 14, .92); touch-action: none; user-select: none; -webkit-user-select: none; }
+.mini-head { display: flex; justify-content: space-between; align-items: baseline; }
+.mini-head b { font-family: var(--font-display); font-size: 34px; color: var(--warn); }
+.mini canvas { flex: none; width: 100%; aspect-ratio: 4 / 3; max-height: 70%; border: 2px solid var(--holo); border-radius: 6px; box-shadow: 0 0 18px var(--glow); }
+.mini-help { margin: 0; text-align: center; color: var(--muted); font-size: 13px; letter-spacing: .08em; }
 .board {
   --cols: 4; --rows: 6; --ar: .6667;
   position: relative;
@@ -432,6 +433,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 .menu-actions .btn { padding-block: 11px; font-size: 13px; }
 .menu-actions .btn-go { font-size: 24px; padding-block: 12px; }
 .menu-actions.two .btn-go { grid-column: auto; }
+.visitors { margin: -4px 0 0; text-align: center; font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+.visitors b { color: var(--ink); font-size: 15px; margin-right: 2px; }
+.visitors i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; vertical-align: 1px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 2s ease-in-out infinite; }
 .pill { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 11px; color: var(--bg); background: var(--gold); letter-spacing: .04em; }
 
 /* special tiles */

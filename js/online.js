@@ -99,6 +99,11 @@
   // One row per player (total of their best scores in every mode), and one player's scores mode by mode.
   const overall = (season = null, limit = 100) => rpc("get_overall", { p_season: season, p_limit: limit }, false);
   const profile = (name, season = null) => rpc("get_profile", { p_name: name, p_season: season }, false);
+  // Number of people who came (one account per device). Null if the server lacks the function.
+  async function visitors() {
+    try { return Number(await rpc("visitor_count", {}, false)); }
+    catch (e) { if (e.code === "PGRST202") return null; throw e; }
+  }
   const eventInfo = async () => { const r = await rpc("event_info", {}, false); return r && r[0]; };
   const rename = (name) => rpc("set_name", { p_name: name }, true);
   // True if nobody else has this pseudo. Unknown (old server without the function) counts as free.
@@ -185,6 +190,6 @@
   window.addEventListener("online", () => connect());
   NT.online = {
     enabled, GLOBAL_MODES, submit, flush, leaderboard, overall, profile, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length,
-    connect, connected, nameFree, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave,
+    connect, connected, nameFree, visitors, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave,
   };
 })();

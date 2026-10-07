@@ -32,7 +32,7 @@ HTML/CSS/JS sans dépendance, emballé en application Android (APK pour installe
 | Expansion | 3 | 72 BPM | la grille passe de 2×3 à 7×9 |
 | Rythme | 3 | 80 BPM | toucher quand l'anneau se referme : Parfait (±70 ms), Bien (±150 ms) |
 | Miroir | 3 | 76 BPM | la couleur à toucher s'inverse tous les 16 temps |
-| Chaos | 3 | 72 BPM | Le plateau tourne, se retourne (recto verso) tous les 16 temps, zoome, change de taille à chaque palier ; tous les 3 paliers, téléportation dans un mini-jeu de 10 s : le paresseux saute par-dessus les arbres (arbre percuté = −1 vie, survie = +15 points, +5 crédits) |
+| Chaos | 3 | 72 BPM | Plateau qui tourne (de plus en plus vite), se retourne (recto verso) tous les 16 temps, zoome, change de taille à chaque palier, plus un événement surprise toutes les quelques mesures : Séisme, Tornade, Mélange (les cases changent de place), Dérive, Gelée, Brouillard, Microscope, Géant, Déluge, Retourne-veste. Tous les 3 paliers : téléportation à la ferme, 10 s de mini-jeu où la poule saute par-dessus les arbres (arbre = −1 vie, grain = +2, survie = +15 points et +5 crédits) |
 | Défi du jour | 3 | 72 BPM | même suite de cases pour tous, un essai officiel par jour |
 | Duel | 3 | 72 BPM | un code de 5 caractères = la même partie pour les deux joueurs |
 
@@ -66,9 +66,11 @@ L'**événement** démarre **7 jours après le 30e joueur**, puis le classement 
 
 Le pseudo est vérifié dès la création du compte (fonction `name_available` : relancer `supabase/schema.sql`). Sans compte, l'écran Connexion revient au plus une fois par semaine.
 
+**Compteur** : le menu affiche « N joueurs sont venus » (fonction `visitor_count` : nombre de comptes, un par appareil lancé en ligne depuis la v3.5 ; relancer `supabase/schema.sql`).
+
 **Statistiques** : `supabase/stats.sql` (installations, joueurs actifs, rétention J1/S1/M1, modes joués), à coller requête par requête dans le SQL Editor. Aucune donnée nouvelle collectée.
 
-**Tests** : `node tests/login.test.mjs` (Chromium + Playwright, Supabase simulé) ; lancé par GitHub Actions à chaque push.
+**Tests** : `node tests/login.test.mjs` et `node tests/chaos.test.mjs` (Chromium + Playwright, Supabase simulé) ; lancés par GitHub Actions à chaque push.
 Mise en place : **[`supabase/README.md`](supabase/README.md)** (SQL à coller : `supabase/schema.sql`, puis URL et clé publique dans `js/online-config.js`).
 
 ## Mises à jour
@@ -108,6 +110,7 @@ js/config.js                modes, boutique, missions, rangs, pistes
 js/audio.js                 musique (horloge du jeu), synthé, vibrations
 js/visuals.js               cadres, pluie, particules, carte de partage
 js/game.js                  moteur, tutoriel, calibrage, écrans
+js/minigame.js              mini-jeu de la poule (mode Chaos)
 audio/ fonts/ assets/       musique (jeu : sync-or-die.mp3, every-scar-a-shield.mp3, the-velvet-hour.mp3 ; menu : sync-or-die-original.mp3, fichier d'origine non modifié), polices, images
 android/                    wrapper WebView et scripts de build
 store/                      textes, icône, bannière, captures du Play Store

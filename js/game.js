@@ -1,10 +1,10 @@
 (() => {
   "use strict";
-  const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DIFFICULTIES, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS, CHAOS_GRIDS, TELEPORT_EVERY, SLOTH_MS } = NT.cfg;
+  const { MODES, MODE_IDS, CATALOG, RANKS, MISSIONS, TRACKS, DIFFICULTIES, DEFAULT_GRID, MAX_BPM, GLIDE, CREEP, BOSS_MS, FREEZE_MS, CHAOS_GRIDS, TELEPORT_EVERY, MINI_MS } = NT.cfg;
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.8";
+  const VERSION = "3.10";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -272,13 +272,13 @@
       feintStreak: 0, maxFeintStreak: 0, gold: 0, perfects: 0, inversions: 0, bosses: 0, specials: 0,
       freezeUntil: 0, frozen: false, boss: null, target: "green", mirrorBeats: 0, holding: null, cause: null,
       trackOn: false, spawnLog: [],
-      chaos: M.chaos ? { rot: 0, dir: 1, flip: 0, flipTo: 0 } : null, mini: null, teleports: 0, teleportDue: false,
+      chaos: M.chaos ? { rot: 0, dir: 1, flip: 0, flipTo: 0, zoom: 0, ev: null, lastEv: "", nextEv: 0 } : null, mini: null, teleports: 0, teleportDue: false,
       levelNo: lv ? lv.n : 0, diffId, lifeMul: t.life, redAdd: t.red,
     };
     if (lv) applyLook("lv" + lv.n); // every level is played in its own colours
     boardEl.className = "board" + (M.rhythm ? " rhythm" : "") + (M.chaos ? " chaos" : "");
     boardEl.style.transform = "";
-    hideSloth();
+    hideMini();
     if (seed !== null) for (let k = 0; k < 16; k++) G.rng(); // warm up: the first draws of a fresh seed are less mixed
     const [c, r] = M.grids ? M.grids[0] : M.chaos ? [4, 4] : DEFAULT_GRID;
     setGrid(c, r, true);
@@ -549,7 +549,21 @@
     }
   }
 
-  // ---------- chaos: spin, flip (recto verso), zoom, grid size, teleport ----------
+  // ---------- chaos: spin, flip (recto verso), zoom, grid size, events, teleport ----------
+  // Events, one at a time, announced by a banner: each lasts a few seconds and stacks on top of
+  // the spin / flip / zoom that never stop.
+  const CHAOS_EVENTS = [
+    { id: "quake",   name: "Séisme",     sub: "tout tremble",              ms: 4000 },
+    { id: "tornado", name: "Tornade",    sub: "rotation ×3",               ms: 3500 },
+    { id: "shuffle", name: "Mélange",    sub: "les cases changent de place", ms: 4000 },
+    { id: "drift",   name: "Dérive",     sub: "le plateau s'en va",        ms: 6000 },
+    { id: "jelly",   name: "Gelée",      sub: "le plateau ondule",         ms: 5000 },
+    { id: "fog",     name: "Brouillard", sub: "on n'y voit rien",          ms: 4000 },
+    { id: "tiny",    name: "Microscope", sub: "carte minuscule",           ms: 3500 },
+    { id: "giant",   name: "Géant",      sub: "carte énorme",              ms: 3500 },
+    { id: "storm",   name: "Déluge",     sub: "deux fois plus de cases",   ms: 4000 },
+    { id: "swap",    name: "Retourne-veste", sub: "recto ↔ verso en boucle", ms: 4000 },
+  ];
   function chaosLevel() {
     // The map grows or shrinks: another grid size, never the same twice in a row.
     const now = cells.length;
@@ -558,7 +572,7 @@
     clearTiles(); releaseHold();
     setGrid(c, r, true);
     G.chaos.dir = Math.random() < 0.5 ? -1 : 1;
-    if (G.level % TELEPORT_EVERY === 0) { G.teleportDue = true; banner("Téléportation", "accroche-toi", true); }
+    if (G.level % TELEPORT_EVERY === 0) { G.teleportDue = true; banner("Téléportation", "à la ferme !", true); }
     else banner(c * r > now ? "La carte grandit" : "La carte rétrécit", `${Math.round(G.bpm)} BPM · niveau ${G.level}`);
   }
   function chaosFlip() {
@@ -566,12 +580,49 @@
     banner(G.chaos.flipTo ? "Verso" : "Recto", "le plateau se retourne", true);
     sfx("riser"); haptic("level");
   }
+  function chaosBeat() {
+    const ch = G.chaos;
+    if (G.beatN > 0 && G.beatN % 16 === 0) chaosFlip();
+    else if (!ch.ev && G.beatN > 4 && G.beatN % 8 === 4 && G.beatN >= ch.nextEv) startEvent();
+    if (ch.ev && ch.ev.id === "shuffle" && G.beatN % 2 === 0) shuffleTiles();
+    if (ch.ev && ch.ev.id === "swap") ch.flipTo = ch.flipTo ? 0 : 180;
+    if (ch.ev && ch.ev.id === "storm") spawn();
+    if (ch.ev && ch.ev.id === "quake") haptic("ui");
+  }
+  function startEvent() {
+    const ch = G.chaos, pool = CHAOS_EVENTS.filter((e) => e.id !== ch.lastEv);
+    const e = pool[Math.floor(Math.random() * pool.length)];
+    ch.ev = { id: e.id, until: G.clock + e.ms }; ch.lastEv = e.id;
+    ch.nextEv = G.beatN + 8 + Math.floor(Math.random() * 8);
+    boardEl.classList.toggle("fog", e.id === "fog");
+    banner(e.name, e.sub, true);
+    sfx("alarm"); haptic("special");
+  }
+  function endEvent() {
+    const ch = G.chaos;
+    if (ch.ev && ch.ev.id === "swap") ch.flipTo = ch.flip > 90 ? 180 : 0;
+    ch.ev = null; boardEl.classList.remove("fog");
+  }
+  // Tiles jump to random empty cells (the one held down stays put).
+  function shuffleTiles() {
+    const empty = cells.map((_, i) => i).filter((i) => !G.tiles.has(i));
+    for (const [i, t] of [...G.tiles]) {
+      if (!empty.length) break;
+      if (G.holding && G.holding.i === i) continue;
+      const j = empty.splice(Math.floor(Math.random() * empty.length), 1)[0];
+      empty.push(i);
+      G.tiles.delete(i); G.tiles.set(j, t);
+      cells[j].appendChild(t.el);
+    }
+  }
   function chaosTick(dt) {
     const ch = G.chaos, sec = dt / 1000;
-    if (G.mini) return slothTick(dt);
-    if (G.teleportDue && G.clock > 0) { G.teleportDue = false; return startSloth(); }
-    // Spin: faster with each level, capped so tiles stay catchable.
-    ch.rot = (ch.rot + ch.dir * Math.min(40, 8 + G.level * 2.5) * sec) % 360;
+    if (G.mini) return miniTick(dt);
+    if (G.teleportDue && G.clock > 0) { G.teleportDue = false; return startMini(); }
+    if (ch.ev && G.clock >= ch.ev.until) endEvent();
+    const ev = ch.ev ? ch.ev.id : "", t = G.clock / 1000;
+    // Spin: faster with each level (×3 in a tornado), capped so tiles stay catchable.
+    ch.rot = (ch.rot + ch.dir * Math.min(40, 8 + G.level * 2.5) * (ev === "tornado" ? 3 : 1) * sec) % 360;
     // Flip: turns 360° per second towards its target face.
     if (ch.flip !== ch.flipTo) {
       const step = 360 * sec;
@@ -579,115 +630,53 @@
       boardEl.classList.toggle("verso", ch.flip > 90);
     }
     // Zoom: breathes between 58 % and 86 % (a square at 45° needs ≤ 71 % to fit).
-    const zoom = 0.72 + 0.14 * Math.sin(G.clock / 1000 * Math.PI * 2 / 7);
-    boardEl.style.transform = `perspective(900px) rotateY(${ch.flip.toFixed(1)}deg) rotate(${ch.rot.toFixed(1)}deg) scale(${zoom.toFixed(3)})`;
+    let zoom = 0.72 + 0.14 * Math.sin(t * Math.PI * 2 / 7);
+    if (ev === "tiny") zoom = 0.42; else if (ev === "giant") zoom = 1.05;
+    ch.zoom = ch.zoom ? ch.zoom + (zoom - ch.zoom) * Math.min(1, sec * 6) : zoom;
+    let dx = 0, dy = 0, skew = 0;
+    if (ev === "quake") { dx = (Math.random() - 0.5) * 18; dy = (Math.random() - 0.5) * 18; }
+    if (ev === "drift") { dx = Math.sin(t * 1.7) * 60; dy = Math.cos(t * 1.3) * 45; }
+    if (ev === "jelly") skew = Math.sin(t * 7) * 14;
+    boardEl.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) perspective(900px) rotateY(${ch.flip.toFixed(1)}deg) rotate(${ch.rot.toFixed(1)}deg) skewX(${skew.toFixed(1)}deg) scale(${ch.zoom.toFixed(3)})`;
   }
 
-  // ---------- sloth mini-game: tap to jump over the trees ----------
-  const slothEl = $("#sloth"), slothCv = $("#sloth-cv");
-  function startSloth() {
-    clearTiles(); releaseHold();
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    slothEl.hidden = false;
-    const r = slothCv.getBoundingClientRect();
-    slothCv.width = Math.max(1, Math.round(r.width * dpr)); slothCv.height = Math.max(1, Math.round(r.height * dpr));
-    const H = slothCv.height;
-    // Units scale with the canvas height; speed rises with the tempo.
-    G.mini = { t: 0, W: slothCv.width, H, ground: H * 0.8, y: 0, vy: 0, trees: [], next: 900, hurtUntil: 0, legs: 0,
-               size: H * 0.16, speed: slothCv.width * (0.45 + Math.max(0, effBpm() - 72) * 0.003) };
+  // ---------- teleport: the chicken mini-game (js/minigame.js), tap to jump over the trees ----------
+  const miniEl = $("#mini"), miniGame = NT.Chicken($("#mini-cv"));
+  function startMini() {
+    clearTiles(); releaseHold(); endEvent();
+    miniEl.hidden = false;
+    G.mini = { t: 0, grains: 0 };
+    miniGame.start(1 + Math.max(0, effBpm() - 72) * 0.006);
     sfx("riser"); haptic("special");
-    drawSloth();
   }
-  function hideSloth() { slothEl.hidden = true; }
-  function endSloth() {
-    G.mini = null; hideSloth();
+  function hideMini() { miniEl.hidden = true; }
+  function endMini() {
+    const got = G.mini.grains;
+    G.mini = null; hideMini();
     G.teleports++; G.coins += 5; addPoints(15);
-    banner("Retour", "+15 points · +5 crédits");
+    banner("Retour", `+15 points · +5 crédits${got ? ` · ${got} grain${got > 1 ? "s" : ""}` : ""}`);
     sfx("riser"); haptic("level");
     renderHud();
   }
-  function slothJump(e) {
+  miniEl.addEventListener("pointerdown", (e) => {
     e.preventDefault();
-    const m = G && G.mini;
-    if (!m || !G.running || G.paused) return;
-    if (m.y <= 0.5) { m.vy = m.H * 1.8; sfx("ui"); haptic("ui"); }
-  }
-  slothEl.addEventListener("pointerdown", slothJump);
-  function slothTick(dt) {
-    const m = G.mini, sec = dt / 1000;
+    if (!G || !G.mini || !G.running || G.paused) return;
+    if (miniGame.jump()) { sfx("ui"); haptic("ui"); }
+  });
+  function miniTick(dt) {
+    const m = G.mini;
     m.t += dt;
-    $("#sloth-left").textContent = Math.max(0, Math.ceil((SLOTH_MS - m.t) / 1000));
-    if (m.t >= SLOTH_MS) return endSloth();
-    // Jump physics (y = height above the ground).
-    m.vy -= m.H * 4.6 * sec; m.y = Math.max(0, m.y + m.vy * sec); if (m.y === 0) m.vy = Math.max(0, m.vy);
-    m.legs += sec * 10;
-    // Trees: a new one after a random gap (shorter when the tempo is high), none in the last second.
-    m.next -= dt;
-    if (m.next <= 0 && m.t < SLOTH_MS - 1500) {
-      const h = m.H * (0.12 + Math.random() * 0.12);
-      m.trees.push({ x: m.W + 20, w: m.H * (0.07 + Math.random() * 0.05), h });
-      m.next = (750 + Math.random() * 750) * (90 / Math.max(90, effBpm()));
-    }
-    for (const t of m.trees) t.x -= m.speed * sec;
-    m.trees = m.trees.filter((t) => t.x + t.w > -10);
-    // Collision (boxes shrunk a little so it feels fair).
-    const sx = m.W * 0.14, sw = m.size * 0.75, sh = m.size * 0.7, sy = m.y;
-    if (m.t > m.hurtUntil) {
-      for (const t of m.trees) {
-        if (t.x < sx + sw * 0.85 && t.x + t.w > sx + sw * 0.15 && sy < t.h * 0.9) {
-          m.hurtUntil = m.t + 1200; G.combo = 0;
-          sfx("miss"); haptic("red"); flash();
-          if (G.M.lives) {
-            G.lives--; renderHud();
-            if (G.lives <= 0) { G.cause = { type: "sloth" }; G.mini = null; drawSloth(m); return end(); }
-          }
-          break;
-        }
+    $("#mini-left").textContent = Math.max(0, Math.ceil((MINI_MS - m.t) / 1000));
+    if (m.t >= MINI_MS) return endMini();
+    const r = miniGame.step(dt, m.t < MINI_MS - 1500); // no new tree in the last 1.5 s
+    if (r.grains) { m.grains += r.grains; addPoints(2 * r.grains); sfx("hit", 3, true); haptic("hit"); renderHud(); }
+    if (r.hit) {
+      G.combo = 0; sfx("miss"); haptic("red"); flash();
+      if (G.M.lives) {
+        G.lives--; renderHud();
+        if (G.lives <= 0) { G.cause = { type: "chicken" }; G.mini = null; return end(); }
       }
     }
-    drawSloth();
-  }
-  function drawSloth(m = G.mini) {
-    if (!m) return;
-    const c = slothCv.getContext("2d"), { W, H, ground } = m;
-    c.clearRect(0, 0, W, H);
-    // Sky and ground
-    const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#0b2233"); g.addColorStop(1, "#14321f");
-    c.fillStyle = g; c.fillRect(0, 0, W, H);
-    c.fillStyle = "#3b2a1a"; c.fillRect(0, ground, W, H - ground);
-    c.strokeStyle = cssVar("--holo") || "#36c9ff"; c.lineWidth = Math.max(1, H * 0.006);
-    c.beginPath(); c.moveTo(0, ground); c.lineTo(W, ground); c.stroke();
-    // Trees: trunk + round foliage
-    for (const t of m.trees) {
-      c.fillStyle = "#6b4a2b"; c.fillRect(t.x + t.w * 0.3, ground - t.h, t.w * 0.4, t.h);
-      c.fillStyle = "#2f8a46";
-      c.beginPath(); c.arc(t.x + t.w / 2, ground - t.h, t.w * 0.85, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(t.x + t.w * 0.15, ground - t.h * 0.82, t.w * 0.55, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(t.x + t.w * 0.85, ground - t.h * 0.82, t.w * 0.55, 0, Math.PI * 2); c.fill();
-    }
-    // Sloth: brown body, pale face with dark eye bands, long arms, little legs
-    const s = m.size, x = W * 0.14, y = ground - m.y;
-    if (m.t < m.hurtUntil && Math.floor(m.t / 100) % 2) c.globalAlpha = 0.35;
-    const step = Math.sin(m.legs) * s * 0.06 * (m.y === 0 ? 1 : 0);
-    c.fillStyle = "#6e5236";
-    c.fillRect(x + s * 0.15, y - s * 0.22 + step, s * 0.12, s * 0.22);
-    c.fillRect(x + s * 0.5, y - s * 0.22 - step, s * 0.12, s * 0.22);
-    c.fillStyle = "#8a6a48";
-    c.beginPath(); c.ellipse(x + s * 0.4, y - s * 0.42, s * 0.42, s * 0.28, 0, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = "#7a5b3c"; c.lineWidth = s * 0.09; c.lineCap = "round";
-    c.beginPath(); c.moveTo(x + s * 0.55, y - s * 0.5); c.lineTo(x + s * 0.95, y - s * (m.y > 0 ? 0.85 : 0.3)); c.stroke();
-    c.fillStyle = "#c9a97f";
-    c.beginPath(); c.arc(x + s * 0.82, y - s * 0.62, s * 0.22, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "#3a2716";
-    c.beginPath(); c.ellipse(x + s * 0.76, y - s * 0.64, s * 0.07, s * 0.045, -0.3, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.ellipse(x + s * 0.92, y - s * 0.64, s * 0.07, s * 0.045, 0.3, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "#fff";
-    c.beginPath(); c.arc(x + s * 0.77, y - s * 0.645, s * 0.02, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc(x + s * 0.91, y - s * 0.645, s * 0.02, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = "#3a2716"; c.lineWidth = s * 0.025;
-    c.beginPath(); c.arc(x + s * 0.84, y - s * 0.55, s * 0.05, 0.2, Math.PI - 0.2); c.stroke();
-    c.globalAlpha = 1;
   }
 
   // ---------- loop ----------
@@ -704,7 +693,7 @@
   function onBeat() {
     if (!(G.trackOn && Music.playing)) Synth.beat(G.beatN, spb(), G.level);
     if (G.M.mirror && G.beatN > 0) mirrorBeat();
-    if (G.chaos && G.beatN > 0 && G.beatN % 16 === 0 && !G.mini) chaosFlip();
+    if (G.chaos && !G.mini) chaosBeat();
     if (G.mini) { G.beatN++; return; } // away in the mini-game: no tiles
     const n = spawnsThisBeat();
     for (let k = 0; k < n; k++) spawn();
@@ -792,14 +781,14 @@
     miss: ["Trop lent", (b, g) => g.M.lives === 1 ? `Une case à toucher s'est éteinte (${b} BPM).` : `${g.M.lives} cases à toucher se sont éteintes. La dernière à ${b} BPM.`],
     mirror: ["Mauvaise cible", (b, g) => `La cible était ${g.cause.target === "green" ? "verte" : "rouge"} à ce moment (${b} BPM). Regarde « Cible » en bas de l'écran.`],
     time: ["Temps écoulé", () => "Les 60 secondes sont passées."],
-    sloth: ["Arbre percuté", (b) => `Le paresseux a percuté un arbre pendant la téléportation (${b} BPM). Touche l'écran juste avant chaque arbre pour sauter.`],
+    chicken: ["Arbre percuté", (b) => `La poule s'est pris un arbre pendant la téléportation (${b} BPM). Touche l'écran juste avant chaque arbre pour sauter.`],
   };
   function end() {
     if (!G.running) return;
     G.running = false; G.over = true;
     releaseHold();
     if (G.mini) G.mini = null;
-    setTimeout(hideSloth, 700);
+    setTimeout(hideMini, 700);
     const timeUp = G.cause && G.cause.type === "time";
     Music.tapeStop();
     if (!timeUp) { sfx("fail"); haptic("red"); flash(); glitch(); } else sfx("ui");
@@ -1001,7 +990,7 @@
   function quit() {
     $("#paused").hidden = true; G.running = false;
     Music.stop(); Synth.resume();
-    clearTiles(); G.mini = null; hideSloth();
+    clearTiles(); G.mini = null; hideMini();
     show(G.levelNo ? "levels" : "menu");
   }
   $("#btn-pause").onclick = pause;
@@ -1944,7 +1933,7 @@
     show(BACK_TO[current] || "menu"); return true;
   };
   window.__debug = () => ({ music: Music.playing, rate: Music.el && Music.el.playbackRate, bpm: G && G.bpm, bpmNow: G && G.bpmNow, cells: cells.length, tiles: G && [...G.tiles.values()].map((t) => t.kind), level: G && G.level, target: G && G.target, boss: !!(G && G.boss), score: G && G.score, spawned: G && G.spawnLog.join(","),
-    sloth: G && G.mini && { t: G.mini.t, y: G.mini.y, x: G.mini.W * 0.14, trees: G.mini.trees.map((t) => t.x) }, lives: G && G.lives });
+    mini: G && G.mini && miniGame.state(), chaosEvent: G && G.chaos && G.chaos.ev && G.chaos.ev.id, lives: G && G.lives });
 
   // ---------- iPhone & installable web app ----------
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -1982,6 +1971,7 @@
   async function refreshEventPill() {
     if (!NT.online.enabled || Date.now() - eventPillAt < 60000) return;
     eventPillAt = Date.now();
+    refreshVisitors();
     try {
       const info = await NT.online.eventInfo(), p = $("#rank-pill");
       if (!info) return;
@@ -1990,6 +1980,25 @@
       p.textContent = info.season === 0 ? "Bientôt" : `Saison ${info.season}`;
     } catch {}
   }
+  // « N joueurs sont venus » on the menu: last known value shown at once (offline too), refreshed
+  // with the event pill. Hidden if the server is older than the counter.
+  const VISITORS = "redless-visitors";
+  function showVisitors(n) {
+    const el = $("#visitors");
+    if (!(n > 0)) { el.hidden = true; return; }
+    $("#visitors-n").textContent = n.toLocaleString("fr-FR");
+    $("#visitors-label").textContent = n > 1 ? "joueurs sont venus" : "joueur est venu";
+    el.hidden = false;
+  }
+  async function refreshVisitors() {
+    try {
+      const n = await NT.online.visitors();
+      if (n === null) { try { localStorage.removeItem(VISITORS); } catch {} return showVisitors(0); }
+      try { localStorage.setItem(VISITORS, String(n)); } catch {}
+      showVisitors(n);
+    } catch {}
+  }
+  try { showVisitors(+localStorage.getItem(VISITORS) || 0); } catch {}
   // Automatic connection to the game server at startup (anonymous account, then queued scores).
   if (NT.online.enabled) NT.online.connect(S.name);
   setTimeout(() => $("#splash")?.remove(), 1000); // startup animation is over
