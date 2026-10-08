@@ -2,211 +2,455 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Redless : touche le vert, jamais le rouge</title>
-<meta name="description" content="Redless, le jeu de réflexes en rythme : un doigt, une règle, une musique qui accélère sans fin. Gratuit, sans publicité, sur Android, iPhone et navigateur.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#040a11">
-<meta property="og:title" content="Redless : touche le vert, jamais le rouge">
-<meta property="og:description" content="Un doigt. Une règle. Une musique qui accélère sans fin. Gratuit et sans publicité.">
-<meta property="og:image" content="img/2-partie.jpg">
-<link rel="icon" href="jouer/assets/icon-192.png">
-<link rel="apple-touch-icon" href="jouer/assets/icon-180.png">
-<link rel="preload" href="jouer/fonts/oxanium.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="site.css?v=4">
-<script>
-  // Redless installé sur l'écran d'accueil (ancienne adresse) : on va directement au jeu.
-  if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) location.replace("jouer/");
-</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Redless">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<!-- artifact:start -->
+<title>Redless</title>
+<link rel="stylesheet" href="css/style.css">
+<!-- artifact:head-end -->
 </head>
 <body>
-<div class="sky" aria-hidden="true"></div>
-<div class="rain" aria-hidden="true"></div>
+<div id="app" data-skin="minuit" data-shape="carre">
+  <canvas id="rain"></canvas>
 
-<header class="top">
-  <a class="brand" href="#"><span class="red">RED</span>LESS</a>
-  <nav>
-    <a href="#regles">Le jeu</a>
-    <a href="#modes">Modes</a>
-    <a href="#classement">Classement</a>
-    <a href="#telecharger">Télécharger</a>
-    <a href="#nouveautes">Nouveautés</a>
-  </nav>
-  <a class="btn btn-small" href="jouer/">Jouer</a>
-</header>
+  <!-- UPDATE AVAILABLE -->
+  <div class="update-bar" id="update-bar" role="status" hidden>
+    <span id="update-text">Nouvelle version disponible</span>
+    <button class="btn small btn-go" id="btn-update">Mettre à jour</button>
+    <button class="icon-btn small-x" id="btn-update-close" aria-label="Plus tard">×</button>
+  </div>
 
-<main>
-  <!-- ============ Accueil ============ -->
-  <section class="hero">
-    <div class="hero-text">
-      <p class="kicker">Jeu de réflexes en rythme · gratuit · sans publicité</p>
-      <h1 class="logo"><span class="red">RED</span>LESS</h1>
-      <p class="tagline">Touche le vert. Jamais le rouge.</p>
-      <p class="lead">Un doigt, une seule règle. Les cases tombent sur les temps de la musique, et la musique <strong>accélère sans fin</strong>. Au début c'est calme. Quelques minutes plus tard, tu joues à 180&nbsp;BPM et les cases commencent à mentir.</p>
-      <div class="cta">
-        <a class="btn btn-go" href="jouer/">Jouer maintenant</a>
-        <a class="btn btn-ghost" href="#telecharger">Télécharger l'app</a>
+  <!-- STARTUP ANIMATION (pure CSS, under 1 s, never blocks the game) -->
+  <div class="splash" id="splash" aria-hidden="true">
+    <div class="splash-logo"><span class="t-red">Red</span>less</div>
+    <i class="splash-bar"></i>
+  </div>
+
+  <!-- LOGIN: shown at startup while the player has no account -->
+  <section class="screen scroll" id="login" hidden>
+    <h1 class="title login-title"><span class="t-red">Red</span>less<small class="tagline">Connexion</small></h1>
+    <form class="set-group login-card" id="login-form" data-frame="sm">
+      <p class="srv-help" id="login-help"></p>
+      <label class="login-field" id="login-name-row"><span class="label">Pseudo</span>
+        <input id="login-name" maxlength="14" placeholder="2 à 14 caractères" autocomplete="nickname" aria-label="Pseudo"></label>
+      <label class="login-field" id="login-email-row"><span class="label">E-mail</span>
+        <input id="login-email" type="email" inputmode="email" placeholder="ton.adresse@mail.com" autocomplete="email" autocapitalize="off" spellcheck="false" aria-label="Adresse e-mail"></label>
+      <label class="login-field" id="login-code-row" hidden><span class="label">Code reçu par e-mail</span>
+        <input id="login-code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="10" aria-label="Code reçu par e-mail"></label>
+      <button class="btn btn-go" type="submit" id="btn-login-go">Recevoir mon code</button>
+      <button class="btn" type="button" id="btn-login-switch" data-frame="sm">J'ai déjà un compte</button>
+    </form>
+    <button class="btn" id="btn-login-guest" data-frame="sm">Jouer sans compte</button>
+    <p class="note">Pas de mot de passe : un code est envoyé par e-mail. Le compte garde ta progression et la retrouve sur un autre téléphone.</p>
+  </section>
+
+  <!-- MENU -->
+  <section class="screen" id="menu">
+    <div class="menu-top">
+      <button class="rank-badge" id="btn-rank" aria-label="Rang">
+        <span class="label">Rang</span>
+        <b id="rank-name">Recrue</b>
+        <span class="xpbar"><i id="rank-bar"></i></span>
+      </button>
+      <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
+      <button class="icon-btn" id="btn-settings" aria-label="Réglages"></button>
+    </div>
+    <div class="menu-hero" data-frame="hex">
+      <div class="demo" id="demo" aria-hidden="true"></div>
+    </div>
+    <h1 class="title"><span class="t-red glitch" data-text="Red">Red</span><span class="glitch" data-text="less">less</span><small class="tagline">Touche le vert. Jamais le rouge.</small></h1>
+    <p class="visitors" id="visitors" hidden><i></i><b class="num" id="visitors-n">0</b> <span id="visitors-label">joueurs sont venus</span></p>
+    <div class="install" id="install" hidden>
+      <span id="install-text"></span>
+      <button class="btn small" id="btn-install" data-frame="sm" hidden>Installer</button>
+      <button class="icon-btn small-x" id="btn-install-close" aria-label="Masquer">×</button>
+    </div>
+    <button class="mode-pick" id="btn-modes" data-frame="sm">
+      <span class="mode-pick-head"><span class="label">Modes de jeu</span><span class="mode-pick-go"><span class="pill" id="daily-pill" hidden>Défi du jour</span>Changer ›</span></span>
+      <b id="mode-current">Classique</b>
+      <span class="mode-rule" id="mode-rule"></span>
+    </button>
+    <div class="menu-actions">
+      <button class="btn btn-go" id="btn-play">Jouer</button>
+      <button class="btn btn-levels" id="btn-levels" data-frame="sm">Niveaux <span class="lv-count" id="lv-count">1 / 200</span></button>
+      <button class="btn" id="btn-missions" data-frame="sm">Missions <span class="pill" id="missions-pill" hidden></span></button>
+      <button class="btn" id="btn-shop" data-frame="sm">Boutique</button>
+      <button class="btn" id="btn-board" data-frame="sm">Classement <span class="pill" id="rank-pill" hidden></span></button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="play" hidden>
+    <div class="hud">
+      <div class="gauge gauge-energy">
+        <span class="g-label" id="energy-label">Énergie</span>
+        <svg viewBox="0 0 36 92" aria-hidden="true"><path class="arc-track" d="M30 4 Q2 46 30 88" pathLength="100"/><path class="arc-fill" id="energy-fill" d="M30 88 Q2 46 30 4" pathLength="100"/></svg>
+        <span class="g-value num" id="energy-val">3</span>
       </div>
-      <p class="meta">Version <span data-version>3.13</span> · Android, iPhone et navigateur</p>
-    </div>
-
-    <!-- Démo jouable : la même règle, en 3×4 -->
-    <div class="phone" aria-label="Démo jouable">
-      <div class="phone-hud">
-        <div><small>SCORE</small><b id="demo-score">0</b></div>
-        <div><small>VIES</small><b id="demo-lives">3</b></div>
-        <div><small>BPM</small><b id="demo-bpm">70</b></div>
+      <div class="score-frame" data-frame="hex">
+        <span class="label" id="score-label">Score</span>
+        <div class="hud-score num" id="score" aria-live="polite">0</div>
+        <span class="combo" id="combo"></span>
       </div>
-      <div class="demo-grid" id="demo-grid"></div>
-      <div class="demo-overlay" id="demo-overlay">
-        <p id="demo-title">Essaie tout de suite</p>
-        <p id="demo-text">Touche les cases <span class="g">vertes</span>, jamais les <span class="r">rouges</span>.</p>
-        <button class="btn btn-go" id="demo-start">Essayer</button>
+      <div class="gauge gauge-shield">
+        <span class="g-label">Bouclier</span>
+        <svg viewBox="0 0 36 92" aria-hidden="true"><path class="arc-track" d="M6 4 Q34 46 6 88" pathLength="100"/><path class="arc-fill" id="shield-fill" d="M6 88 Q34 46 6 4" pathLength="100"/></svg>
+        <span class="g-value num" id="mult">x1</span>
       </div>
     </div>
-  </section>
-
-  <!-- ============ Chiffres ============ -->
-  <section class="stats">
-    <div><b data-players>…</b><span>joueurs inscrits</span></div>
-    <div><b>10</b><span>modes de jeu</span></div>
-    <div><b>200</b><span>niveaux de campagne</span></div>
-    <div><b>21</b><span>musiques</span></div>
-  </section>
-
-  <!-- ============ Règles ============ -->
-  <section id="regles" class="block">
-    <h2>Comment on joue</h2>
-    <p class="intro">Tout tient en une règle. Le reste, c'est la musique qui te pousse à te tromper.</p>
-    <div class="cards">
-      <article class="card"><div class="tile tile-green">○</div><h3>Vert : touche</h3><p>Chaque case verte touchée rapporte des points. En laisser filer une coûte une vie.</p></article>
-      <article class="card"><div class="tile tile-red">✕</div><h3>Rouge : jamais</h3><p>Une case rouge touchée, et la partie s'arrête. Pas de deuxième chance.</p></article>
-      <article class="card"><div class="tile tile-gold">★</div><h3>Doré : bonus</h3><p>Les étoiles dorées rapportent 5 crédits pour la boutique.</p></article>
-      <article class="card"><div class="tile tile-feint">⇄</div><h3>Les fintes</h3><p>Vert qui vire au rouge, rouge qui devient vert, cases qui clignotent : elles valent double, si tu ne te fais pas avoir.</p></article>
-      <article class="card"><div class="tile tile-special"><i class="b"></i><i class="v"></i><i class="k"></i></div><h3>Les spéciales</h3><p><span class="c-blue">Bleue</span> ralentit le tempo 3&nbsp;s, <span class="c-violet">violette</span> efface les rouges, <b>noire</b> : garde le doigt appuyé.</p></article>
-      <article class="card"><div class="tile tile-boss">☠</div><h3>Boss et combos</h3><p>Un boss tous les 5 niveaux : 15&nbsp;s de pièges, +50 points si tu survis. Les combos montent jusqu'à ×4.</p></article>
+    <div class="board-wrap">
+      <div class="board" id="board" data-frame="board"></div>
     </div>
-  </section>
-
-  <!-- ============ Captures ============ -->
-  <section id="captures" class="block">
-    <h2>Dans le cockpit</h2>
-    <p class="intro">Une interface de cockpit holographique, une ville sous la pluie, et des cases qui ne te laissent jamais souffler.</p>
-    <div class="carousel">
-      <button class="arrow prev" type="button" aria-label="Capture précédente">‹</button>
-      <div class="shots" id="shots">
-        <figure><div class="device"><img src="img/2-partie.jpg" alt="Une partie en mode Classique" width="432" height="768" decoding="async"></div><figcaption>Une partie en Classique</figcaption></figure>
-        <figure><div class="device"><img src="img/3-expansion.jpg" loading="lazy" alt="Le mode Expansion" width="432" height="768" decoding="async"></div><figcaption>Expansion : la grille grandit</figcaption></figure>
-        <figure><div class="device"><img src="img/4-miroir.jpg" loading="lazy" alt="Le mode Miroir" width="432" height="768" decoding="async"></div><figcaption>Miroir : les couleurs s'inversent</figcaption></figure>
-        <figure><div class="device"><img src="img/5-fin.jpg" loading="lazy" alt="L'écran de fin de partie" width="432" height="768" decoding="async"></div><figcaption>L'écran de fin explique ton erreur</figcaption></figure>
-        <figure><div class="device"><img src="img/6-missions.jpg" loading="lazy" alt="Les missions du jour" width="432" height="768" decoding="async"></div><figcaption>3 missions par jour</figcaption></figure>
+    <div class="beatbar" id="beatbar"><i id="beat"></i></div>
+    <div class="bottom-hud">
+      <div class="radar" data-frame="sm">
+        <div class="radar-grid"></div>
+        <div class="sweep" id="sweep"></div>
+        <span class="num" id="bpm">72</span>
+        <small>BPM</small>
       </div>
-      <button class="arrow next" type="button" aria-label="Capture suivante">›</button>
+      <dl class="tactical">
+        <dt>Données tactiques</dt>
+        <dd>Mode <b id="mode-tag">Classique</b></dd>
+        <dd>Niveau <b id="level">1</b></dd>
+        <dd><span id="row3-label">Grille</span> <b id="grid-size">4×6</b></dd>
+        <dd>Crédits <b id="run-coins">0</b></dd>
+      </dl>
+      <button class="icon-btn" id="btn-pause" aria-label="Pause"></button>
     </div>
-    <div class="dots" id="shot-dots" role="tablist" aria-label="Choisir une capture"></div>
-  </section>
-
-  <!-- ============ Modes ============ -->
-  <section id="modes" class="block">
-    <h2>10 façons de perdre</h2>
-    <p class="intro">Chaque mode change une seule chose. C'est largement assez.</p>
-    <div class="modes">
-      <article><h3>Classique</h3><p>3 vies, un palier tous les 8 verts. La base, et déjà pas facile.</p></article>
-      <article><h3>Chrono</h3><p>60 secondes pour marquer un maximum. Toucher un rouge coûte 5 secondes.</p></article>
-      <article><h3>Mort subite</h3><p>Une seule vie. Une seule erreur et c'est fini.</p></article>
-      <article><h3>Fintes</h3><p>Plus de la moitié des cases changent de couleur au dernier moment.</p></article>
-      <article><h3>Expansion</h3><p>La grille passe de 2×3 à 7×9 cases. Tes yeux vont courir.</p></article>
-      <article><h3>Rythme</h3><p>Touche quand l'anneau se referme. Vise le « Parfait » (±70&nbsp;ms).</p></article>
-      <article><h3>Miroir</h3><p>Tous les 16 temps, la couleur à toucher s'inverse. Le vert devient l'ennemi.</p></article>
-      <article class="hot"><h3>Chaos</h3><p>Le plateau tourne, se retourne, zoome. Séisme, tornade, brouillard… et une téléportation à la ferme pour un mini-jeu avec une poule.</p></article>
-      <article><h3>Défi du jour</h3><p>La même partie pour tout le monde, un seul essai officiel par jour.</p></article>
-      <article><h3>Duel</h3><p>Un code de 5 caractères : ton ami joue exactement la même suite de cases que toi.</p></article>
+    <!-- CHAOS: the chicken mini-game (js/minigame.js), played over the board after a teleport -->
+    <div class="mini" id="mini" hidden>
+      <div class="mini-head"><span class="label">Téléportation · la ferme</span><b class="num" id="mini-left">10</b></div>
+      <canvas id="mini-cv" aria-label="Mini-jeu : la poule saute par-dessus les arbres"></canvas>
+      <p class="mini-help">Touche l'écran pour sauter · attrape les grains (+2)</p>
     </div>
-    <p class="note">5 difficultés, de <b>Facile</b> à <b>Impossible</b> : tempo, fintes, vies et crédits changent (×0,5 à ×3).</p>
-  </section>
-
-  <!-- ============ Campagne, boutique, musique ============ -->
-  <section class="block features">
-    <article class="feature">
-      <h2>200 niveaux</h2>
-      <p>Une campagne de 20 mondes de 10 niveaux, chacun avec ses couleurs, son mode et <b>3 quêtes</b>. Réussis-les toutes pour débloquer le thème du niveau.</p>
-    </article>
-    <article class="feature">
-      <h2>Ta boutique</h2>
-      <p>Thèmes holographiques, effets (spirale, étoiles, flammes, glitch, nova…), formes de cases et fonds. Essaie avant d'acheter, avec les crédits gagnés en jouant. Rien à payer, jamais.</p>
-    </article>
-    <article class="feature">
-      <h2>21 musiques</h2>
-      <p>Les cases tombent sur les temps : la musique, c'est l'horloge du jeu. 4 musiques d'origine dont « Sync or Die », et 17 musiques libres à débloquer.</p>
-    </article>
-  </section>
-
-  <!-- ============ Classement ============ -->
-  <section id="classement" class="block">
-    <h2>Classement mondial</h2>
-    <p class="intro" id="season-text">Chargement du classement…</p>
-    <div class="board" id="board" aria-live="polite"></div>
-    <p class="note">Le total des meilleurs scores de chaque joueur, dans tous les modes. Mis à jour en direct.</p>
-  </section>
-
-  <!-- ============ Télécharger ============ -->
-  <section id="telecharger" class="block">
-    <h2>Télécharger Redless</h2>
-    <p class="intro">Gratuit, sans publicité, et ça marche même hors ligne.</p>
-    <div class="cards three">
-      <article class="card dl">
-        <h3>🤖 Android</h3>
-        <ol>
-          <li>Télécharge le fichier <b>redless.apk</b>.</li>
-          <li>Ouvre-le : Android demande d'autoriser l'installation, accepte.</li>
-          <li>C'est installé. Les mises à jour te sont proposées dans le jeu.</li>
-        </ol>
-        <a class="btn btn-go" id="apk-link" href="https://github.com/anonyme5575/redless/releases/download/latest/redless.apk">Télécharger l'APK</a>
-      </article>
-      <article class="card dl">
-        <h3>🍏 iPhone et iPad</h3>
-        <ol>
-          <li>Ouvre <b>le jeu</b> dans <b>Safari</b>.</li>
-          <li>Touche <b>Partager</b> (le carré avec la flèche).</li>
-          <li>Choisis <b>« Sur l'écran d'accueil »</b> : Redless s'installe comme une app, en plein écran.</li>
-        </ol>
-        <a class="btn btn-ghost" href="jouer/">Ouvrir le jeu</a>
-      </article>
-      <article class="card dl">
-        <h3>💻 Navigateur</h3>
-        <ol>
-          <li>Rien à installer : le jeu tourne directement dans ton navigateur.</li>
-          <li>Sur ordinateur, joue à la souris.</li>
-          <li>Ta progression est gardée, et un compte permet de la retrouver ailleurs.</li>
-        </ol>
-        <a class="btn btn-ghost" href="jouer/">Jouer dans le navigateur</a>
-      </article>
+    <div class="banner" id="banner"></div>
+    <div class="countdown" id="countdown" hidden></div>
+    <div class="pause-overlay" id="paused" hidden>
+      <div class="pause-card" data-frame="hex">
+        <h3>Pause</h3>
+        <button class="btn btn-go" id="btn-resume">Reprendre</button>
+        <button class="btn" id="btn-quit" data-frame="sm">Quitter la partie</button>
+      </div>
     </div>
   </section>
 
-  <!-- ============ Nouveautés ============ -->
-  <section id="nouveautes" class="block">
-    <h2>Nouveautés</h2>
-    <ol class="timeline">
-      <li><b>3.13</b><p>Redless a son propre serveur et son site. Les mises à jour arrivent toujours toutes seules.</p></li>
-      <li><b>3.12</b><p>Nouveau tempo : départ plus doux, puis accélération <b>sans aucune limite</b>. La musique suit jusqu'à 2×, ensuite les cases tombent entre les temps.</p></li>
-      <li><b>3.11</b><p>Droits et mentions des musiques au nom de MyBlackWhite.</p></li>
-      <li><b>3.10</b><p>Le menu affiche combien de joueurs sont venus.</p></li>
-      <li><b>3.9</b><p>Chaos encore plus fou : Séisme, Tornade, Mélange, Gelée, Brouillard, Géant, Déluge… et la poule de la ferme.</p></li>
-      <li><b>3.8</b><p>Nouveau mode <b>Chaos</b> : plateau qui tourne, se retourne, zoome, et téléportation dans un mini-jeu.</p></li>
-      <li><b>3.5 – 3.7</b><p>Écran de connexion au lancement, compte protégé par e-mail (sans mot de passe), bouton « Se déconnecter ».</p></li>
-      <li><b>3.4</b><p>Menus rangés, et 17 nouvelles musiques libres à débloquer.</p></li>
-      <li><b>3.3</b><p>La campagne de <b>200 niveaux</b>, 5 difficultés et une boutique géante.</p></li>
-      <li><b>2.7 – 2.9</b><p>Classement général, fiche joueur, boutique avec défis, effets, et la barre « Mettre à jour ».</p></li>
-    </ol>
+  <!-- GAME OVER -->
+  <section class="screen scroll" id="over" hidden>
+    <div class="over-head">
+      <span class="label" id="over-mode">Classique</span>
+      <h2 class="over-title glitch" id="over-title" data-text="Rouge touché">Rouge touché</h2>
+      <p class="over-sub" id="over-sub"></p>
+    </div>
+    <div class="over-score-row">
+      <div>
+        <span class="label">Score</span>
+        <div class="over-score num" id="over-score">0</div>
+      </div>
+      <div class="over-side">
+        <span class="new-best" id="over-best" hidden>Nouveau record</span>
+        <span class="tag" id="over-tag" hidden></span>
+      </div>
+    </div>
+    <div class="over-grid">
+      <div class="stat" data-frame="sm"><span class="label">Crédits</span><span class="num" id="over-coins">+0</span></div>
+      <div class="stat" data-frame="sm"><span class="label">Combo max</span><span class="num" id="over-combo">0</span></div>
+      <div class="stat" data-frame="sm"><span class="label">Tempo</span><span class="num" id="over-bpm">72</span></div>
+    </div>
+    <div class="xp-row">
+      <span class="label">Rang <b id="over-rank">Recrue</b></span>
+      <span class="xpbar"><i id="over-xpbar"></i></span>
+      <span class="xp-gain" id="over-xp">+0 pts</span>
+    </div>
+    <ul class="done-list" id="over-missions" hidden></ul>
+    <p class="over-online" id="over-online" hidden></p>
+    <form class="name-row" id="name-form">
+      <input id="name-input" maxlength="14" placeholder="Ton pseudo (2 à 14 caractères)" autocomplete="nickname" aria-label="Pseudo pour le classement">
+      <button class="btn" type="submit" data-frame="sm">Enregistrer</button>
+    </form>
+    <div class="over-actions">
+      <button class="btn btn-go" id="btn-next-level" hidden>Niveau suivant</button>
+      <button class="btn btn-go" id="btn-again">Rejouer</button>
+      <button class="btn" id="btn-share" data-frame="sm">Partager</button>
+      <button class="btn" id="btn-over-menu" data-frame="sm">Menu</button>
+    </div>
   </section>
-</main>
 
-<footer class="foot">
-  <p class="brand"><span class="red">RED</span>LESS</p>
-  <p>© 2026 MyBlackWhite. Jeu et musiques originales : tous droits réservés.</p>
-  <p><a href="jouer/PRIVACY.md">Confidentialité</a> · <a href="jouer/COPYRIGHT.md">Droits</a></p>
-</footer>
+  <!-- SHOP -->
+  <section class="screen" id="shop" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Boutique</h2>
+      <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
+    </div>
+    <div class="shop-preview" id="shop-preview" aria-hidden="true"><div class="cellp"><div class="tile green"></div></div><div class="cellp"><div class="tile red"></div></div><div class="cellp"><div class="tile gold"></div></div><div class="cellp"><div class="tile green"></div></div></div>
+    <div class="tabs" role="tablist" id="shop-tabs">
+      <button class="tab" role="tab" data-cat="skin" aria-selected="true">Thèmes</button>
+      <button class="tab" role="tab" data-cat="fx" aria-selected="false">Effets</button>
+      <button class="tab" role="tab" data-cat="shape" aria-selected="false">Formes</button>
+      <button class="tab" role="tab" data-cat="bg" aria-selected="false">Fonds</button>
+      <button class="tab" role="tab" data-cat="music" aria-selected="false">Musique</button>
+      <button class="tab" role="tab" data-cat="lvtheme" aria-selected="false">Niveaux</button>
+    </div>
+    <div class="shop-list" id="shop-list"></div>
+  </section>
 
-<script src="site.js?v=4" defer></script>
+  <!-- LEADERBOARD -->
+  <section class="screen" id="ranking" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Classement</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="event-card" id="event-card" data-frame="sm" hidden>
+      <span class="label" id="event-title">Événement mondial</span>
+      <b class="event-main" id="event-main"></b>
+      <span class="xpbar"><i id="event-bar"></i></span>
+      <span class="event-sub" id="event-sub"></span>
+    </div>
+    <p class="board-hint">Total des meilleurs scores de la saison, tous modes réunis. Touche un joueur pour voir son profil.</p>
+    <ol class="board-list" id="board-list"></ol>
+    <p class="note" id="rank-note">Classement mondial</p>
+  </section>
+
+  <!-- PLAYER PROFILE -->
+  <section class="screen scroll" id="profile" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2 id="prof-name">Joueur</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="prof-head" data-frame="hex">
+      <span class="label" id="prof-rank">—</span>
+      <b class="num prof-total" id="prof-total">0</b>
+      <span class="prof-sub" id="prof-sub"></span>
+    </div>
+    <ul class="prof-modes" id="prof-modes"></ul>
+  </section>
+
+  <!-- CAMPAIGN: worlds and levels -->
+  <section class="screen scroll" id="levels" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Niveaux</h2>
+      <span class="lv-stars" id="lv-stars">★ 0</span>
+    </div>
+    <div class="tabs world-tabs" id="world-tabs" role="tablist"></div>
+    <p class="world-name" id="world-name"></p>
+    <div class="lv-grid" id="lv-grid"></div>
+  </section>
+
+  <!-- ONE LEVEL: its theme, mode and quests -->
+  <section class="screen scroll" id="level" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2 id="lvd-title">Niveau 1</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="lvd-head" data-frame="hex">
+      <span class="label" id="lvd-world"></span>
+      <b class="lvd-name" id="lvd-name"></b>
+      <span class="lvd-mode" id="lvd-mode"></span>
+      <span class="lvd-stars" id="lvd-stars"></span>
+    </div>
+    <span class="label">Quêtes</span>
+    <ul class="lvd-quests" id="lvd-quests"></ul>
+    <p class="lvd-theme" id="lvd-theme"></p>
+    <button class="btn btn-go" id="btn-lvd-play">Jouer</button>
+  </section>
+
+  <!-- GAME MODES -->
+  <section class="screen scroll" id="modes-screen" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Modes de jeu</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="diff-box" data-frame="sm">
+      <span class="label">Difficulté</span>
+      <div class="seg diff-seg" id="diff-seg" role="radiogroup" aria-label="Difficulté"></div>
+      <p class="diff-note" id="diff-note"></p>
+    </div>
+    <h3 class="set-title">Modes</h3>
+    <div class="mode-list" id="modes" role="radiogroup" aria-label="Mode de jeu"></div>
+    <h3 class="set-title">Spécial</h3>
+    <button class="daily" id="btn-daily" data-frame="sm">
+      <span class="daily-head"><span class="label">Défi du jour</span><b id="daily-date"></b></span>
+      <span class="daily-state" id="daily-state">Pas encore joué</span>
+    </button>
+    <button class="daily duel-card" id="btn-duel" data-frame="sm">
+      <span class="daily-head"><span class="label">Duel</span><b>1 contre 1</b></span>
+      <span class="daily-state">Un code de 5 caractères : la même partie pour toi et ton adversaire</span>
+    </button>
+  </section>
+
+  <!-- MISSIONS -->
+  <section class="screen" id="missions" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Missions</h2>
+      <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
+    </div>
+    <p class="intro">Trois missions par jour. Les crédits sont versés à la fin de la partie qui les termine.</p>
+    <ul class="mission-list" id="mission-list"></ul>
+    <div class="rank-card" data-frame="sm">
+      <span class="label">Rang actuel</span>
+      <b class="rank-big" id="rank-big">Recrue</b>
+      <span class="xpbar"><i id="rank-bar2"></i></span>
+      <span class="note" id="rank-next"></span>
+    </div>
+  </section>
+
+  <!-- DUEL -->
+  <section class="screen" id="duel" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Duel</h2>
+      <span class="spacer"></span>
+    </div>
+    <p class="intro">Un code donne exactement la même suite de cases. Crée un code, joue, puis envoie-le avec ton score : ton adversaire joue la même partie.</p>
+    <div class="duel-card" data-frame="sm">
+      <span class="label">Nouveau duel</span>
+      <div class="code num" id="duel-new">-----</div>
+      <button class="btn btn-go" id="btn-duel-new">Jouer ce code</button>
+      <button class="btn" id="btn-duel-reroll" data-frame="sm">Autre code</button>
+    </div>
+    <form class="duel-card" id="duel-form" data-frame="sm">
+      <label class="label" for="duel-input">Rejoindre un duel</label>
+      <input id="duel-input" class="code-input num" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button class="btn" type="submit" data-frame="sm">Jouer le code reçu</button>
+    </form>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen scroll" id="settings" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Réglages</h2>
+      <span class="spacer"></span>
+    </div>
+    <h3 class="set-title">Son et affichage</h3>
+    <div class="set-group" data-frame="sm">
+      <label class="set-row" for="set-music"><span>Volume musique</span><input type="range" id="set-music" min="0" max="100" step="5"></label>
+      <label class="set-row" for="set-sfx"><span>Volume effets</span><input type="range" id="set-sfx" min="0" max="100" step="5"></label>
+      <label class="set-row" for="set-track"><span>Musique<small>Plus de musiques dans la boutique</small></span><select class="set-select" id="set-track" aria-label="Musique"></select></label>
+      <div class="set-row"><span>Vibrations<small id="vibe-hint" hidden>Non disponible sur iPhone (limite de Safari)</small></span><button class="toggle" id="set-vibe" aria-pressed="true"></button></div>
+      <div class="set-row"><span>Daltonien renforcé<small>Motifs sur les cases</small></span><button class="toggle" id="set-cb" aria-pressed="false"></button></div>
+    </div>
+    <h3 class="set-title">Profil</h3>
+    <form class="set-group" id="name-set-form" data-frame="sm">
+      <div class="set-row"><span>Pseudo<small>Visible au classement</small></span>
+        <span class="name-set"><input id="set-name" maxlength="14" placeholder="—" autocomplete="nickname" aria-label="Pseudo"><button class="btn small" type="submit" data-frame="sm">OK</button></span></div>
+    </form>
+    <div class="set-group" id="acct-group" data-frame="sm">
+      <div class="set-row"><span>Compte<small id="acct-status">Non protégé</small></span>
+        <span class="name-set"><button class="btn small" id="btn-acct-protect" data-frame="sm">Protéger</button><button class="btn small" id="btn-acct-recover" data-frame="sm">Retrouver</button></span></div>
+      <div class="set-row" id="logout-row" hidden><span>Déconnexion<small id="logout-hint">Progression sauvegardée en ligne</small></span>
+        <button class="btn small danger" id="btn-logout" data-frame="sm">Se déconnecter</button></div>
+      <form class="srv-form" id="acct-form" hidden>
+        <p class="srv-help" id="acct-help"></p>
+        <input id="acct-email" type="email" inputmode="email" placeholder="ton.adresse@mail.com" autocomplete="email" autocapitalize="off" spellcheck="false" aria-label="Adresse e-mail">
+        <input id="acct-code" inputmode="numeric" autocomplete="one-time-code" placeholder="Code reçu par e-mail" maxlength="10" aria-label="Code reçu par e-mail" hidden>
+        <span class="name-set">
+          <button class="btn small" type="submit" id="btn-acct-go" data-frame="sm">Envoyer le code</button>
+          <button class="btn small" type="button" id="btn-acct-cancel" data-frame="sm">Annuler</button>
+        </span>
+      </form>
+    </div>
+    <h3 class="set-title">Aide et données</h3>
+    <div class="set-group" data-frame="sm">
+      <div class="set-row"><span>Décalage audio<small id="set-latency">Non calibré</small></span><button class="btn small" id="btn-calib" data-frame="sm">Calibrer</button></div>
+      <div class="set-row"><span>Tutoriel</span><button class="btn small" id="btn-tuto" data-frame="sm">Revoir</button></div>
+      <div class="set-row"><span>Confidentialité</span><button class="btn small" id="btn-privacy" data-frame="sm">Lire</button></div>
+      <div class="set-row"><span>Progression<small id="reset-hint">Crédits, records, achats</small></span><button class="btn small danger" id="btn-reset" data-frame="sm">Effacer</button></div>
+    </div>
+    <p class="note">Version <span id="app-version">3.13</span></p>
+    <p class="note credits">Redless © 2026 <b>MyBlackWhite</b>. Tous droits réservés.<br>Musiques « Sync or Die », « Every Scar A Shield », « The Velvet Hour » : MyBlackWhite. Réutilisation interdite sans autorisation.<br>17 musiques libres (CC0, OpenGameArt) : Alexander Ehlers, Fupi, G_P, da9elb, Centurion_of_war, TAD. Merci !</p>
+  </section>
+
+  <!-- CALIBRATION -->
+  <section class="screen" id="calib" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Calibrage</h2>
+      <span class="spacer"></span>
+    </div>
+    <p class="intro" id="calib-text">Touche la zone sur chaque temps de la musique, 16 fois. Le jeu mesure le retard du son de ton téléphone et le compense.</p>
+    <button class="calib-pad" id="calib-pad" data-frame="hex">
+      <span class="calib-ring" id="calib-ring"></span>
+      <span class="num calib-count" id="calib-count">Commencer</span>
+    </button>
+    <p class="calib-result" id="calib-result"></p>
+    <div class="menu-actions two">
+      <button class="btn" id="btn-calib-reset" data-frame="sm">Remettre à zéro</button>
+      <button class="btn" id="btn-calib-done" data-frame="sm">Terminé</button>
+    </div>
+  </section>
+
+  <!-- TUTORIAL -->
+  <section class="screen" id="tuto" hidden>
+    <div class="topbar">
+      <span class="label" id="tuto-step">1 / 7</span>
+      <h2>Entraînement</h2>
+      <button class="btn small" id="btn-tuto-skip" data-frame="sm">Passer</button>
+    </div>
+    <p class="tuto-text" id="tuto-text"></p>
+    <div class="board tuto-board" id="tuto-board" data-frame="board"></div>
+    <p class="tuto-feedback" id="tuto-feedback"></p>
+  </section>
+
+  <!-- PRIVACY -->
+  <section class="screen scroll" id="privacy" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Confidentialité</h2>
+      <span class="spacer"></span>
+    </div>
+    <div class="prose">
+      <p><b>Redless ne collecte ni nom, ni contact, ni position. L'adresse e-mail est facultative.</b></p>
+      <p>Ta progression (crédits, records, réglages) reste sur ton appareil, sauf si tu protèges ton compte.</p>
+      <p><b>Compte protégé (facultatif).</b> Si tu touches « Protéger » dans les Réglages, ton adresse e-mail est enregistrée sur le serveur du jeu (Supabase, Union européenne). Elle sert uniquement à t'envoyer un code pour retrouver ton compte, jamais à de la publicité. Ta progression (crédits, achats, records, missions) est alors sauvegardée en ligne. Les volumes, vibrations et le calibrage restent sur l'appareil.</p>
+      <p><b>Classement mondial.</b> Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, hébergé dans l'Union européenne) : ce pseudo, tes scores, ton niveau, ton tempo et la durée de tes parties, rattachés à un identifiant anonyme créé pour ton appareil. Ces données servent uniquement au classement. Le pseudo est visible des autres joueurs.</p>
+      <p><b>Installation.</b> Au premier lancement de l'application installée, le jeu envoie une seule fois un signal anonyme : un identifiant aléatoire, la plateforme (Android, iPhone, web) et la version. Il sert uniquement à compter les installations.</p>
+      <p>Pas de publicité, pas d'outil de mesure d'audience. Le jeu fonctionne sans connexion ; les scores sont envoyés au retour du réseau.</p>
+      <p>Permission utilisée : <b>vibreur</b>, pour les retours haptiques. Elle se coupe dans les réglages.</p>
+      <p>Quand tu partages ton score, l'image est créée sur ton appareil et envoyée seulement à l'application que tu choisis. Sur Android 10 et plus, une copie est rangée dans Images/Redless.</p>
+      <p>Désinstaller le jeu ou « Effacer la progression » supprime les données de l'appareil. Pour faire supprimer tes scores du classement mondial, ouvre une demande sur github.com/anonyme5575/redless en indiquant ton pseudo.</p>
+    </div>
+  </section>
+
+  <!-- SHARE MODAL -->
+  <div class="modal" id="share-modal" hidden>
+    <div class="modal-card" data-frame="sm">
+      <img id="share-img" alt="Carte de score à partager">
+      <p class="note" id="share-hint">Appuie longuement sur l'image pour l'enregistrer.</p>
+      <div class="menu-actions two">
+        <button class="btn" id="btn-share-copy" data-frame="sm">Copier le texte</button>
+        <button class="btn" id="btn-share-close" data-frame="sm">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="fx"></canvas>
+  <div class="flash" id="flash"></div>
+  <div class="visor" aria-hidden="true"></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script src="js/config.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/online-config.js"></script>
+<script src="js/online.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/visuals.js"></script>
+<script src="js/minigame.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>
