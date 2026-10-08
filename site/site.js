@@ -62,6 +62,58 @@
   }
   loadBoard();
 
+  // ---------- Carrousel des captures ----------
+  const shots = $("#shots");
+  if (shots) {
+    const figs = [...shots.querySelectorAll("figure")];
+    const dots = $("#shot-dots");
+    const prev = $(".arrow.prev"), next = $(".arrow.next");
+    let current = 0;
+    figs.forEach((f, i) => {
+      const d = document.createElement("button");
+      d.type = "button";
+      d.setAttribute("role", "tab");
+      d.setAttribute("aria-label", f.querySelector("figcaption").textContent);
+      d.addEventListener("click", () => go(i));
+      dots.appendChild(d);
+      f.addEventListener("click", () => i !== current && go(i));
+    });
+    let moving = 0;
+    function show(i) {
+      current = i;
+      figs.forEach((f, k) => f.classList.toggle("active", k === i));
+      [...dots.children].forEach((d, k) => d.setAttribute("aria-selected", String(k === i)));
+      prev.disabled = i === 0;
+      next.disabled = i === figs.length - 1;
+    }
+    // Flèche, point ou clic sur une capture : elle devient la grande tout de suite, puis glisse au centre.
+    function go(i) {
+      i = Math.max(0, Math.min(figs.length - 1, i));
+      show(i);
+      moving = Date.now();
+      const f = figs[i];
+      shots.scrollTo({ left: f.offsetLeft - (shots.clientWidth - f.offsetWidth) / 2, behavior: "smooth" });
+    }
+    // Glissé au doigt : la capture la plus proche du centre devient la grande.
+    function nearest() {
+      const center = shots.scrollLeft + shots.clientWidth / 2;
+      let best = 0, dist = Infinity;
+      figs.forEach((f, i) => {
+        const d = Math.abs(f.offsetLeft + f.offsetWidth / 2 - center);
+        if (d < dist) { dist = d; best = i; }
+      });
+      return best;
+    }
+    prev.addEventListener("click", () => go(current - 1));
+    next.addEventListener("click", () => go(current + 1));
+    shots.addEventListener("scroll", () => {
+      if (Date.now() - moving < 700) return; // défilement lancé par une flèche : déjà à jour
+      requestAnimationFrame(() => show(nearest()));
+    }, { passive: true });
+    addEventListener("resize", () => go(current));
+    show(0);
+  }
+
   // ---------- Démo jouable ----------
   const grid = $("#demo-grid"), overlay = $("#demo-overlay");
   const cells = [];

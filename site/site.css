@@ -201,11 +201,68 @@ h3 { font-family: var(--font-display); font-size: 20px; letter-spacing: .04em; m
 .tile-special i { width: 15px; height: 54px; }
 .tile-special .b { background: var(--blue); } .tile-special .v { background: var(--violet); } .tile-special .k { background: #0b0f14; box-shadow: inset 0 0 0 1px var(--muted); }
 
-/* Captures */
-.shots { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 4px 18px; }
-.shots figure { flex: 0 0 min(240px, 62vw); margin: 0; scroll-snap-align: start; }
-.shots img { border-radius: 18px; border: 2px solid var(--holo-dim); box-shadow: 0 12px 40px rgba(0, 0, 0, .5); }
-.shots figcaption { text-align: center; color: var(--muted); font-size: 14px; margin-top: 10px; }
+/* Captures : carrousel, la capture du milieu en grand, flèches et points */
+.carousel { position: relative; }
+.shots {
+  display: flex; align-items: center; gap: 8px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+  padding: 20px calc(50% - 130px) 10px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.shots::-webkit-scrollbar { display: none; }
+.shots figure {
+  flex: 0 0 260px; margin: 0;
+  scroll-snap-align: center;
+  transform: scale(.8); opacity: .35;
+  transition: transform .35s, opacity .35s;
+  cursor: pointer;
+}
+.shots figure.active { transform: scale(1); opacity: 1; cursor: default; }
+/* Cadre de téléphone autour de chaque capture */
+.device {
+  position: relative;
+  padding: 10px;
+  border-radius: 34px;
+  background: linear-gradient(160deg, #1b2b38, #070d14);
+  box-shadow: 0 0 0 2px rgba(54, 201, 255, .35), 0 24px 60px rgba(0, 0, 0, .6);
+}
+.shots figure.active .device { box-shadow: 0 0 0 2px var(--holo), 0 0 50px rgba(54, 201, 255, .35), 0 24px 60px rgba(0, 0, 0, .6); }
+.device::before {
+  content: ""; position: absolute; top: 16px; left: 50%; z-index: 1;
+  width: 64px; height: 7px; margin-left: -32px; border-radius: 4px;
+  background: #02060a;
+}
+.device img { border-radius: 25px; width: 100%; height: auto; }
+.shots figcaption {
+  text-align: center; margin-top: 14px;
+  font-family: var(--font-display); font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 14px; color: var(--ink);
+}
+.arrow {
+  --cut: 10px;
+  position: absolute; top: calc(50% - 22px); z-index: 2;
+  width: 52px; height: 52px; border: 0; cursor: pointer;
+  display: grid; place-items: center;
+  font-size: 38px; line-height: 1; font-weight: 700; padding-bottom: 4px;
+  color: var(--holo); background: rgba(4, 10, 17, .85);
+  box-shadow: inset 0 0 0 2px var(--holo), 0 0 22px rgba(54, 201, 255, .3);
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+  transition: background .15s, color .15s, opacity .2s;
+}
+.arrow:hover { background: var(--holo); color: var(--bg); }
+.arrow:disabled { opacity: .25; cursor: default; background: rgba(4, 10, 17, .85); color: var(--holo); }
+.arrow.prev { left: 0; }
+.arrow.next { right: 0; }
+.dots { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
+.dots button {
+  width: 10px; height: 10px; padding: 0; border: 0; cursor: pointer;
+  transform: rotate(45deg);
+  background: var(--holo-dim); box-shadow: inset 0 0 0 1px var(--holo);
+  transition: background .2s, box-shadow .2s;
+}
+.dots button[aria-selected="true"] { background: var(--holo); box-shadow: 0 0 10px var(--glow); }
 
 /* Modes */
 .modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
@@ -274,6 +331,13 @@ h3 { font-family: var(--font-display); font-size: 20px; letter-spacing: .04em; m
   .stats { grid-template-columns: repeat(2, 1fr); }
   .cards, .features { grid-template-columns: 1fr; }
   .block { padding-top: 48px; }
+}
+@media (max-width: 600px) {
+  .shots figure { flex-basis: 220px; }
+  .shots { padding: 16px calc(50% - 110px) 8px; }
+  .arrow { width: 42px; height: 42px; font-size: 30px; }
+  .arrow.prev { left: 2px; }
+  .arrow.next { right: 2px; }
 }
 @media (max-width: 380px) {
   main { padding: 0 14px; }

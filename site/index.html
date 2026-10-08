@@ -11,7 +11,8 @@
 <meta property="og:image" content="img/2-partie.jpg">
 <link rel="icon" href="jouer/assets/icon-192.png">
 <link rel="apple-touch-icon" href="jouer/assets/icon-180.png">
-<link rel="stylesheet" href="site.css">
+<link rel="preload" href="jouer/fonts/oxanium.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="site.css?v=4">
 <script>
   // Redless installé sur l'écran d'accueil (ancienne adresse) : on va directement au jeu.
   if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) location.replace("jouer/");
@@ -90,13 +91,18 @@
   <section id="captures" class="block">
     <h2>Dans le cockpit</h2>
     <p class="intro">Une interface de cockpit holographique, une ville sous la pluie, et des cases qui ne te laissent jamais souffler.</p>
-    <div class="shots">
-      <figure><img src="img/2-partie.jpg" alt="Une partie en mode Classique" loading="lazy" width="540" height="960"><figcaption>Une partie en Classique</figcaption></figure>
-      <figure><img src="img/3-expansion.jpg" alt="Le mode Expansion" loading="lazy" width="540" height="960"><figcaption>Expansion : la grille grandit</figcaption></figure>
-      <figure><img src="img/4-miroir.jpg" alt="Le mode Miroir" loading="lazy" width="540" height="960"><figcaption>Miroir : les couleurs s'inversent</figcaption></figure>
-      <figure><img src="img/5-fin.jpg" alt="L'écran de fin de partie" loading="lazy" width="540" height="960"><figcaption>L'écran de fin explique ton erreur</figcaption></figure>
-      <figure><img src="img/6-missions.jpg" alt="Les missions du jour" loading="lazy" width="540" height="960"><figcaption>3 missions par jour</figcaption></figure>
+    <div class="carousel">
+      <button class="arrow prev" type="button" aria-label="Capture précédente">‹</button>
+      <div class="shots" id="shots">
+        <figure><div class="device"><img src="img/2-partie.jpg" alt="Une partie en mode Classique" width="432" height="768" decoding="async"></div><figcaption>Une partie en Classique</figcaption></figure>
+        <figure><div class="device"><img src="img/3-expansion.jpg" loading="lazy" alt="Le mode Expansion" width="432" height="768" decoding="async"></div><figcaption>Expansion : la grille grandit</figcaption></figure>
+        <figure><div class="device"><img src="img/4-miroir.jpg" loading="lazy" alt="Le mode Miroir" width="432" height="768" decoding="async"></div><figcaption>Miroir : les couleurs s'inversent</figcaption></figure>
+        <figure><div class="device"><img src="img/5-fin.jpg" loading="lazy" alt="L'écran de fin de partie" width="432" height="768" decoding="async"></div><figcaption>L'écran de fin explique ton erreur</figcaption></figure>
+        <figure><div class="device"><img src="img/6-missions.jpg" loading="lazy" alt="Les missions du jour" width="432" height="768" decoding="async"></div><figcaption>3 missions par jour</figcaption></figure>
+      </div>
+      <button class="arrow next" type="button" aria-label="Capture suivante">›</button>
     </div>
+    <div class="dots" id="shot-dots" role="tablist" aria-label="Choisir une capture"></div>
   </section>
 
   <!-- ============ Modes ============ -->
@@ -201,6 +207,6 @@
   <p><a href="jouer/PRIVACY.md">Confidentialité</a> · <a href="jouer/COPYRIGHT.md">Droits</a></p>
 </footer>
 
-<script src="site.js"></script>
+<script src="site.js?v=4" defer></script>
 </body>
 </html>
