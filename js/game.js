@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.19";
+  const VERSION = "3.20";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -132,7 +132,7 @@
     try { showUpdateBar(); } catch {} // hidden during a run
     const sc = screens[id];
     ({ menu: renderMenu, shop: renderShop, ranking: renderBoard, missions: renderMissions,
-       settings: renderSettings, login: renderLogin, duel: renderDuel, calib: renderCalib, "modes-screen": renderModes, levels: renderLevels })[id]?.();
+       settings: renderSettings, login: renderLogin, duel: renderDuel, calib: renderCalib, "modes-screen": renderModes, "rank-screen": renderRanks, levels: renderLevels })[id]?.();
     fx.initFrames(sc); fx.redrawFrames(sc);
     if (!reduceMotion) {
       sc.classList.remove("enter"); void sc.offsetWidth; sc.classList.add("enter");
@@ -1065,8 +1065,8 @@
   $("#btn-duel").onclick = () => show("duel");
   $("#btn-settings").onclick = () => show("settings");
   $("#tab-home").onclick = () => { sfx("ui"); show("menu"); };
-  $("#tab-levels").onclick = () => $("#btn-levels").click();
-  $("#btn-record").onclick = () => { sfx("ui"); show("ranking"); };
+  $("#tab-levels").onclick = () => { sfx("ui"); worldShown = -1; show("levels"); };
+  $("#btn-rank").onclick = () => { sfx("ui"); show("rank-screen"); };
   $("#btn-share").onclick = () => shareRun();
 
   // ---------- menu ----------
@@ -1078,8 +1078,6 @@
     const nm = S.name || "Invité";
     $("#menu-name").textContent = nm;
     $("#menu-avatar").textContent = nm[0].toUpperCase();
-    $("#menu-best").textContent = S.bests[S.mode] || 0;
-    $("#menu-best-mode").textContent = MODES[S.mode].name;
     renderDaily();
     const doneCount = S.missions.list.filter((m) => m.done).length;
     const pill = $("#missions-pill"); pill.hidden = false; pill.textContent = `${doneCount}/3`;
@@ -1099,8 +1097,6 @@
     const d = DIFFICULTIES[S.difficulty];
     $("#mode-current").textContent = MODES[S.mode].name + (S.difficulty === "normal" ? "" : ` · ${d.name}`);
     $("#mode-rule").textContent = MODES[S.mode].rule;
-    $("#lv-count").textContent = `${Math.min(LV.COUNT, levelsCleared() + 1)} / ${LV.COUNT}`;
-    $("#btn-levels small").textContent = `★ ${totalStars()} · Continuer ›`;
   }
   // Difficulty (modes only): 5 steps, with what each one changes for credits and the world board.
   function renderDifficulty() {
@@ -1201,7 +1197,6 @@
     fx.initFrames(ul);
   }
   const startLevel = (n) => startGame(LV.get(n).mode, { level: n });
-  $("#btn-levels").onclick = () => { sfx("ui"); worldShown = -1; show("levels"); };
   $("#btn-lvd-play").onclick = () => startLevel(levelShown);
   $("#btn-next-level").onclick = () => { if (G && G.levelNo) startLevel(G.levelNo + 1); };
 
@@ -1503,10 +1498,32 @@
       ul.appendChild(li);
     }
     fx.initFrames(ul);
+  }
+
+  // « Rangs » page (opened from the rank on home): current rank, then every rank and its shop unlocks.
+  const CAT_NAMES = { skin: "Thème", fx: "Effet", shape: "Forme", bg: "Fond", music: "Musique" };
+  function renderRanks() {
     const rk = rankOf(S.xp);
     $("#rank-big").textContent = rk.name;
     $("#rank-bar2").style.width = (rk.pct * 100).toFixed(1) + "%";
-    $("#rank-next").textContent = rk.next ? `${S.xp} points de carrière · ${rk.next.name} à ${rk.next.xp}` : `${S.xp} points de carrière · rang maximal`;
+    $("#rank-next").textContent = rk.next
+      ? `${S.xp} points de carrière · encore ${rk.next.xp - S.xp} pour ${rk.next.name}`
+      : `${S.xp} points de carrière · rang maximal`;
+    const ul = $("#rank-list"); ul.innerHTML = "";
+    RANKS.forEach((r, i) => {
+      const li = document.createElement("li");
+      li.className = "rank-row" + (i < rk.i ? " got" : i === rk.i ? " now" : " locked");
+      li.innerHTML = "<span class=\"rr-num\"></span><span class=\"rr-name\"><b></b><small></small></span><span class=\"rr-state\"></span><span class=\"rr-unlocks\"></span>";
+      li.querySelector(".rr-num").textContent = i + 1;
+      li.querySelector("b").textContent = r.name;
+      li.querySelector("small").textContent = r.xp ? `${r.xp} points` : "Départ";
+      li.querySelector(".rr-state").textContent = i < rk.i ? "Atteint" : i === rk.i ? "Actuel" : `encore ${r.xp - S.xp}`;
+      const items = [];
+      for (const [cat, list] of Object.entries(CATALOG)) for (const it of list) if (it.req && it.req.rank === r.name) items.push(`${CAT_NAMES[cat] || cat} ${it.name}`);
+      const un = li.querySelector(".rr-unlocks");
+      if (items.length) un.textContent = "Débloque : " + items.join(", "); else un.remove();
+      ul.appendChild(li);
+    });
   }
 
   // ---------- duel ----------

@@ -71,14 +71,14 @@
   <!-- MENU -->
   <section class="screen" id="menu">
     <div class="menu-top">
-      <div class="rank-badge" id="btn-rank">
+      <button class="rank-badge" id="btn-rank" aria-label="Voir tous les rangs">
         <span class="avatar" id="menu-avatar" aria-hidden="true">?</span>
         <span class="who">
           <b class="who-name" id="menu-name">Invité</b>
           <span class="who-rank" id="rank-name">Recrue</span>
           <span class="xpbar"><i id="rank-bar"></i></span>
         </span>
-      </div>
+      </button>
       <span class="coins"><span class="coin"></span><span data-bind="coins">0</span></span>
       <div class="more-wrap">
         <button class="icon-btn" id="btn-more" aria-label="Plus d'options" aria-expanded="false"></button>
@@ -99,14 +99,7 @@
       <button class="btn small" id="btn-install" data-frame="sm" hidden>Installer</button>
       <button class="icon-btn small-x" id="btn-install-close" aria-label="Masquer">×</button>
     </div>
-    <div class="record-card">
-      <button class="rc-part" id="btn-record" data-frame="sm">
-        <span class="label">Ton record</span><b id="menu-best">0</b><small id="menu-best-mode">Classique</small>
-      </button>
-      <button class="rc-part rc-levels" id="btn-levels" data-frame="sm">
-        <span class="label">Niveaux</span><b id="lv-count">1 / 200</b><small>Continuer ›</small>
-      </button>
-    </div>    <button class="mode-pick" id="btn-modes" data-frame="sm">
+    <button class="mode-pick" id="btn-modes" data-frame="sm">
       <span class="mode-pick-head"><span class="label">Modes de jeu</span><span class="mode-pick-go"><span class="pill" id="daily-pill" hidden>Défi du jour</span>Changer ›</span></span>
       <b id="mode-current">Classique</b>
       <span class="mode-rule" id="mode-rule"></span>
@@ -330,12 +323,23 @@
     </div>
     <p class="intro">Trois missions par jour. Les crédits sont versés à la fin de la partie qui les termine.</p>
     <ul class="mission-list" id="mission-list"></ul>
+ </section>
+
+  <!-- RANKS: current rank, career points, every rank and what it unlocks -->
+  <section class="screen scroll" id="rank-screen" hidden>
+    <div class="topbar">
+      <button class="icon-btn back" aria-label="Retour"></button>
+      <h2>Rangs</h2>
+      <span class="spacer"></span>
+    </div>
     <div class="rank-card" data-frame="sm">
       <span class="label">Rang actuel</span>
       <b class="rank-big" id="rank-big">Recrue</b>
       <span class="xpbar"><i id="rank-bar2"></i></span>
       <span class="note" id="rank-next"></span>
     </div>
+    <p class="intro">Chaque point marqué en partie s'ajoute à tes <b>points de carrière</b>, dans tous les modes et les niveaux. Chaque rang débloque de nouveaux objets à acheter dans la boutique.</p>
+    <ul class="rank-list" id="rank-list"></ul>
   </section>
 
   <!-- DUEL -->
@@ -403,7 +407,7 @@
       <div class="set-row"><span>Confidentialité</span><button class="btn small" id="btn-privacy" data-frame="sm">Lire</button></div>
       <div class="set-row"><span>Progression<small id="reset-hint">Crédits, records, achats</small></span><button class="btn small danger" id="btn-reset" data-frame="sm">Effacer</button></div>
     </div>
-    <p class="note">Version <span id="app-version">3.19</span></p>
+    <p class="note">Version <span id="app-version">3.20</span></p>
     <p class="note credits">Redless © 2026 <b>MyBlackWhite</b>. Tous droits réservés.<br>Musiques « Sync or Die », « Every Scar A Shield », « The Velvet Hour » : MyBlackWhite. Réutilisation interdite sans autorisation.<br>17 musiques libres (CC0, OpenGameArt) : Alexander Ehlers, Fupi, G_P, da9elb, Centurion_of_war, TAD. Merci !</p>
   </section>
 
