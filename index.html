@@ -393,7 +393,7 @@
       <div class="set-row"><span>Confidentialité</span><button class="btn small" id="btn-privacy" data-frame="sm">Lire</button></div>
       <div class="set-row"><span>Progression<small id="reset-hint">Crédits, records, achats</small></span><button class="btn small danger" id="btn-reset" data-frame="sm">Effacer</button></div>
     </div>
-    <p class="note">Version <span id="app-version">3.22</span></p>
+    <p class="note">Version <span id="app-version">3.23</span></p>
     <p class="note credits">Redless © 2026 <b>MyBlackWhite</b>. Tous droits réservés.<br>Musiques « Sync or Die », « Every Scar A Shield », « The Velvet Hour » : MyBlackWhite. Réutilisation interdite sans autorisation.<br>17 musiques libres (CC0, OpenGameArt) : Alexander Ehlers, Fupi, G_P, da9elb, Centurion_of_war, TAD. Merci !</p>
   </section>
 
@@ -461,6 +461,17 @@
   <div class="site-view" id="site-view" hidden>
     <button class="icon-btn site-back" id="site-back" aria-label="Retour au jeu"></button>
     <iframe id="site-frame" title="Site de Redless"></iframe>
+  </div>
+
+  <!-- BAN (admin): confirmation before banning or unbanning a player -->
+  <div class="modal" id="ban-modal" hidden>
+    <div class="modal-card" data-frame="sm">
+      <p class="ban-text" id="ban-text"></p>
+      <div class="menu-actions two">
+        <button class="btn danger" id="btn-ban-yes" data-frame="sm">Bannir</button>
+        <button class="btn" id="btn-ban-no" data-frame="sm">Annuler</button>
+      </div>
+    </div>
   </div>
 
   <!-- SHARE MODAL -->

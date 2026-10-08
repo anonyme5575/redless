@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.22";
+  const VERSION = "3.23";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1428,25 +1428,56 @@
     const req = ++boardReq;
     ol.appendChild(emptyRow("Chargement…"));
     try {
-      const [info, rows] = await Promise.all([NT.online.eventInfo(), NT.online.overall()]);
+      const [info, rows, admin] = await Promise.all([NT.online.eventInfo(), NT.online.overall(), NT.online.isAdmin()]);
       if (req !== boardReq || current !== "ranking") return;
       ol.innerHTML = "";
       if (info) { renderEvent(info); boardSeason = info.season; }
-      if (!rows || !rows.length) return ol.appendChild(emptyRow("Personne n'est encore classé ce mois-ci. Termine une partie pour être le premier."));
+      if (admin) $("#rank-note").textContent = "Admin : touche un joueur pour le bannir";
+      if (!rows || !rows.length) ol.appendChild(emptyRow("Personne n'est encore classé ce mois-ci. Termine une partie pour être le premier."));
       let last = 0;
       rows.forEach((r, k) => {
         if (r.rank > last + 1 && last > 0) { const gap = document.createElement("li"); gap.className = "gap"; gap.textContent = "…"; ol.appendChild(gap); }
         const n = r.games ?? r.modes;
         const small = `${n} partie${n > 1 ? "s" : ""}${r.is_me ? " · toi" : ""}`;
-        ol.appendChild(boardRow(r.rank, r.name, small, r.total, r.is_me, k));
+        ol.appendChild(boardRow(r.rank, r.name, small, r.total, r.is_me, k, admin && !r.is_me ? () => askBan(r.name, true) : null));
         last = r.rank;
       });
+      // Admin only: banned players at the bottom, a tap offers to unban.
+      if (admin) {
+        const list = (await NT.online.banned().catch(() => [])) || [];
+        if (req !== boardReq || current !== "ranking") return;
+        if (list.length) {
+          const head = document.createElement("li"); head.className = "gap"; head.textContent = "Joueurs bannis · touche pour débannir"; ol.appendChild(head);
+          list.forEach((b, k) => { const li = boardRow("×", b.name, "banni", b.total, false, k, () => askBan(b.name, false)); li.classList.add("banned"); ol.appendChild(li); });
+        }
+      }
     } catch (e) {
       if (req !== boardReq) return;
       ol.innerHTML = "";
       ol.appendChild(emptyRow(e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne." : `Classement indisponible : ${e.message}`));
     }
   }
+
+  // Ban / unban (admin), with a confirmation window (no system dialog: the Android app has none).
+  let banTarget = null;
+  function askBan(name, on) {
+    banTarget = { name, on };
+    $("#ban-text").textContent = on
+      ? `Bannir ${name} du classement mondial ? Il disparaît du classement et ne peut plus y envoyer de points.`
+      : `Débannir ${name} ? Il revient au classement avec ses points.`;
+    $("#btn-ban-yes").textContent = on ? "Bannir" : "Débannir";
+    $("#ban-modal").hidden = false;
+    fx.initFrames($("#ban-modal")); fx.redrawFrames($("#ban-modal"));
+  }
+  $("#btn-ban-no").onclick = () => { $("#ban-modal").hidden = true; };
+  $("#btn-ban-yes").onclick = async () => {
+    if (!banTarget) return;
+    const { name, on } = banTarget;
+    $("#ban-modal").hidden = true;
+    try { await NT.online.ban(name, on); toast(on ? `${name} est banni` : `${name} est débanni`); }
+    catch (e) { toast(e.offline ? "Pas de connexion" : e.message); }
+    if (current === "ranking") renderBoard();
+  };
 
   // ---------- missions & rank ----------
   function renderMissions() {
@@ -2002,6 +2033,7 @@
     if (!$("#site-view").hidden) { closeSite(); return true; }
     if (!$("#more-menu").hidden) { closeMore(); return true; }
     if (!$("#share-modal").hidden) { $("#share-modal").hidden = true; return true; }
+    if (!$("#ban-modal").hidden) { $("#ban-modal").hidden = true; return true; }
     if (current === "play") {
       if (G && G.running && !G.paused) { pause(); return true; }
       if (G && G.paused) { quit(); return true; }

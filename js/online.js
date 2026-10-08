@@ -109,6 +109,13 @@
 
   // One row per player: total of the points of the season, and number of games.
   const overall = (season = null, limit = 100) => rpc("get_overall", { p_season: season, p_limit: limit }, false);
+  // Administrator (account tied to the admin e-mail): can ban players from the world board.
+  async function isAdmin() {
+    if (!session) return false;
+    try { return (await rpc("am_i_admin", {}, false)) === true; } catch { return false; }
+  }
+  const ban = (name, on = true) => rpc("ban_player", { p_name: name, p_ban: on }, true);
+  const banned = () => rpc("banned_players", {}, true);
   // Number of people who came (one account per device). Null if the server lacks the function.
   async function visitors() {
     try { return Number(await rpc("visitor_count", {}, false)); }
@@ -199,7 +206,7 @@
 
   window.addEventListener("online", () => connect());
   NT.online = {
-    enabled, GLOBAL_MODES, submit, send, flush, overall, eventInfo, rename, registerInstall, pending: () => (pendingPoints() || { games: 0 }).games,
+    enabled, GLOBAL_MODES, submit, send, flush, overall, isAdmin, ban, banned, eventInfo, rename, registerInstall, pending: () => (pendingPoints() || { games: 0 }).games,
     connect, connected, nameFree, visitors, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave,
   };
 })();

@@ -896,4 +896,7 @@ html, body { touch-action: manipulation; }
 .rank-row.got .rr-state { color: var(--green); }
 .rank-row.now { border-left-color: var(--gold); background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 16%, transparent), var(--panel) 65%); }
 .rank-row.now .rr-num, .rank-row.now .rr-name b, .rank-row.now .rr-state { color: var(--gold); }
-.rank-row.locked { opacity: .7; }
+.rank-row.locked { opacity: .7; }/* ---------- bannir (admin, 3.23) ---------- */
+.ban-text { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ink); }
+.board-list li.banned { opacity: .6; border-left-color: var(--red); }
+.board-list li.banned .rank { color: var(--red); }
