@@ -1,5 +1,6 @@
-// Classement mondial (Supabase). URL du projet + clé PUBLIQUE uniquement (jamais la clé secrète).
+// Serveur du jeu : le Raspberry Pi de Redless (classement, comptes, sauvegardes).
+// Il répond aux mêmes adresses que Supabase, qu'il remplace depuis la version 3.21.
 window.REDLESS_ONLINE = {
-  url: "https://kuylgbqwdtgpztabsuto.supabase.co",
-  key: "sb_publishable_1YNfBYNhh6CfBoAYC3yZOw_2pJc9GNH",
+  url: "https://redless.taild80a87.ts.net",
+  key: "redless",
 };

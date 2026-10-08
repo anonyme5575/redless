@@ -14,7 +14,7 @@
   }
 
   // Même serveur que le jeu (clé PUBLIQUE, lecture seule ici : on n'envoie rien).
-  const SUPABASE = "https://kuylgbqwdtgpztabsuto.supabase.co";
+  const SUPABASE = "https://redless.taild80a87.ts.net"; // serveur Redless sur le Raspberry Pi
   const KEY = "sb_publishable_1YNfBYNhh6CfBoAYC3yZOw_2pJc9GNH";
 
   async function rpc(name, params = {}) {

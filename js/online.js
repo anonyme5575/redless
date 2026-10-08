@@ -1,4 +1,4 @@
-// Global leaderboard on Supabase, over plain HTTP (no library, works offline-first).
+// Global leaderboard on the Redless server (Raspberry Pi, same API as Supabase), over plain HTTP (no library, works offline-first).
 // Players sign in anonymously; scores go through the submit_score() function on the server,
 // which checks them. Failed sends wait in a local queue and are retried later.
 (() => {
@@ -143,7 +143,7 @@
       c === "anonymous_provider_disabled" || /anonymous sign-ins are disabled/i.test(m) ? "Connexion anonyme désactivée sur le serveur." :
       /rate limit|over_email_send_rate_limit|you can only request/i.test(c + " " + m) ? "Trop de codes demandés. Attends quelques minutes." :
       c === "email_address_invalid" || c === "validation_failed" || /invalid.*email|email.*invalid/i.test(m) ? "Adresse e-mail invalide." :
-      /error sending|smtp/i.test(m) ? "Le serveur n'a pas pu envoyer l'e-mail (réglage SMTP de Supabase)." : m;
+      /error sending|smtp/i.test(m) ? "Le serveur n'a pas pu envoyer l'e-mail. Réessaie dans un moment." : m;
     const err = new Error(msg); err.status = e.status; return err;
   }
   const authCall = (p) => p.catch((e) => { throw frenchAuth(e); });

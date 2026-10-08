@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.20";
+  const VERSION = "3.21";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
