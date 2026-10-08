@@ -24,7 +24,8 @@
 <link rel="stylesheet" href="site.css?v=7">
 <script>
   // Redless installé sur l'écran d'accueil (ancienne adresse) : on va directement au jeu.
-  if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) location.replace("jouer/");
+  // Sauf si on vient du bouton « Site de Redless » du jeu (?site).
+  if (!new URLSearchParams(location.search).has("site") && (matchMedia("(display-mode: standalone)").matches || navigator.standalone)) location.replace("jouer/");
 </script>
 </head>
 <body>
@@ -198,7 +199,7 @@
   <section id="nouveautes" class="block">
     <h2>Nouveautés</h2>
     <ol class="timeline">
-      <li><b>3.15 – 3.16</b><p>Sur l'accueil du jeu : bouton <b>Partager</b> pour envoyer le lien à tes amis, et bouton pour ouvrir ce site.</p></li>
+      <li><b>3.15 – 3.17</b><p>Sur l'accueil du jeu : bouton <b>Partager</b> pour envoyer le lien à tes amis, et bouton pour ouvrir ce site.</p></li>
       <li><b>3.14</b><p>Sur ordinateur, le jeu s'affiche dans une grande console au centre de l'écran, avec les règles et les liens autour. Rien ne change sur téléphone.</p></li>
       <li><b>3.13</b><p>Redless a son propre serveur et son site. Les mises à jour arrivent toujours toutes seules.</p></li>
       <li><b>3.12</b><p>Nouveau tempo : départ plus doux, puis accélération <b>sans aucune limite</b>. La musique suit jusqu'à 2×, ensuite les cases tombent entre les temps.</p></li>

@@ -8,6 +8,7 @@ self.addEventListener("activate", (e) => {
     await Promise.all(keys.map((k) => caches.delete(k)));
     await self.registration.unregister();
     const clients = await self.clients.matchAll({ type: "window" });
-    clients.forEach((c) => c.navigate(new URL("jouer/", self.registration.scope).href));
+    // Lien « Site de Redless » du jeu (?site) : on recharge le site au lieu d'aller au jeu.
+    clients.forEach((c) => c.navigate(new URL(c.url).searchParams.has("site") ? c.url : new URL("jouer/", self.registration.scope).href));
   })());
 });

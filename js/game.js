@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.16";
+  const VERSION = "3.17";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1959,7 +1959,7 @@
   // Opens the presentation site: in the phone's browser from the Android app, in a new tab on the web.
   function openSite() {
     sfx("ui");
-    const link = "https://redless.taild80a87.ts.net/", n = NT.native();
+    const link = "https://redless.taild80a87.ts.net/?site", n = NT.native(); // ?site: the page must not send us back to the game
     if (n && n.openUrl) { n.openUrl(link); return; }
     if (!window.open(link, "_blank", "noopener")) location.href = link;
   }
