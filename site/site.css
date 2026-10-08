@@ -71,6 +71,7 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--holo-dim);
 }
 .brand { font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: .12em; color: var(--ink); text-decoration: none; }
+.in-app .top { display: none; }
 .top nav { display: flex; gap: 22px; margin-left: auto; }
 .top nav a { color: var(--muted); text-decoration: none; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 14px; }
 .top nav a:hover { color: var(--holo); }

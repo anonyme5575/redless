@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.17";
+  const VERSION = "3.18";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -1956,13 +1956,21 @@
     try { await navigator.clipboard.writeText(`${text} ${link}`); toast("Lien copié, colle-le à tes amis"); }
     catch { toast(link); }
   }
-  // Opens the presentation site: in the phone's browser from the Android app, in a new tab on the web.
+  // Opens the presentation site over the game (no browser bar), with an arrow back to the game.
+  // ?site: the page must not send us back to the game; inside the frame it hides its own header.
   function openSite() {
     sfx("ui");
-    const link = "https://redless.taild80a87.ts.net/?site", n = NT.native(); // ?site: the page must not send us back to the game
-    if (n && n.openUrl) { n.openUrl(link); return; }
-    if (!window.open(link, "_blank", "noopener")) location.href = link;
+    $("#site-frame").src = "https://redless.taild80a87.ts.net/?site";
+    $("#site-view").hidden = false;
   }
+  function closeSite() {
+    $("#site-view").hidden = true;
+    $("#site-frame").src = "about:blank";
+  }
+  $("#site-back").innerHTML = ICONS.back;
+  $("#site-back").onclick = () => { sfx("ui"); closeSite(); };
+  // The site's « Jouer » buttons ask to come back to the game.
+  window.addEventListener("message", (e) => { if (e.data === "redless-close-site") closeSite(); });
   $("#btn-site").onclick = openSite;
   $("#btn-site-set").onclick = openSite;
   $("#btn-invite").onclick = shareGame;
@@ -1978,6 +1986,7 @@
   window.__pause = () => { pause(); if (current === "calib") stopCalib(); MenuMusic.suspend(); stopPreviewMusic(); };
   window.__resume = () => updateMenuMusic();
   window.__back = () => {
+    if (!$("#site-view").hidden) { closeSite(); return true; }
     if (!$("#share-modal").hidden) { $("#share-modal").hidden = true; return true; }
     if (current === "play") {
       if (G && G.running && !G.paused) { pause(); return true; }

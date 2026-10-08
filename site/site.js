@@ -3,6 +3,16 @@
   "use strict";
   const $ = (s) => document.querySelector(s);
 
+  // Ouvert dans le jeu : les boutons « Jouer » referment le site au lieu d'ouvrir un 2e jeu dedans.
+  if (window.top !== window) {
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest('a[href^="jouer"]');
+      if (!a) return;
+      e.preventDefault();
+      window.parent.postMessage("redless-close-site", "*");
+    });
+  }
+
   // Même serveur que le jeu (clé PUBLIQUE, lecture seule ici : on n'envoie rien).
   const SUPABASE = "https://kuylgbqwdtgpztabsuto.supabase.co";
   const KEY = "sb_publishable_1YNfBYNhh6CfBoAYC3yZOw_2pJc9GNH";
