@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.18";
+  const VERSION = "3.19";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -82,14 +82,34 @@
     mute: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
     pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
     back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+    more: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    home: '<svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>',
+    levels: '<svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
+    shop: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+    trophy: '<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 21h8M9 18h6"/></svg>',
+    target: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
     globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>',
     share: '<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>',
     gear: '<svg viewBox="0 0 24 24"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
   };
   $("#btn-pause").innerHTML = ICONS.pause;
-  $("#btn-settings").innerHTML = ICONS.gear;
-  $("#btn-invite").innerHTML = ICONS.share;
-  $("#btn-site").innerHTML = ICONS.globe;
+  // « ☰ » menu on home: settings, site, invite (icon + text).
+  $("#btn-more").innerHTML = ICONS.more;
+  $("#btn-settings").insertAdjacentHTML("afterbegin", ICONS.gear);
+  $("#btn-site").insertAdjacentHTML("afterbegin", ICONS.globe);
+  $("#btn-invite").insertAdjacentHTML("afterbegin", ICONS.share);
+  function closeMore() { $("#more-menu").hidden = true; $("#btn-more").setAttribute("aria-expanded", "false"); }
+  $("#btn-more").onclick = (e) => {
+    e.stopPropagation(); sfx("ui");
+    const m = $("#more-menu"); m.hidden = !m.hidden;
+    $("#btn-more").setAttribute("aria-expanded", String(!m.hidden));
+  };
+  $("#more-menu").addEventListener("click", () => closeMore());
+  document.addEventListener("click", (e) => { if (!e.target.closest(".more-wrap")) closeMore(); });
+  // Bottom tab bar: shown on home, levels, shop, ranking and missions.
+  const TAB_SCREENS = ["menu", "levels", "shop", "ranking", "missions"];
+  const TAB_ICONS = { "tab-home": "home", "tab-levels": "levels", "btn-shop": "shop", "btn-board": "trophy", "btn-missions": "target" };
+  for (const [id, ic] of Object.entries(TAB_ICONS)) $("#" + id).insertAdjacentHTML("afterbegin", ICONS[ic]);
   const BACK_TO = { privacy: "settings", calib: "settings", profile: "ranking", level: "levels" };
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
@@ -101,6 +121,9 @@
     if (current === "calib" && id !== "calib") stopCalib();
     current = id;
     for (const k in screens) screens[k].hidden = k !== id;
+    closeMore();
+    $("#tabbar").hidden = !TAB_SCREENS.includes(id);
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("on", b.dataset.screen === id));
     if (id !== "shop") try { stopPreviewMusic(); } catch {} // leaving the shop ends a music preview
     // A level's theme shows on its card, during the run and on its result; the player's own look elsewhere.
     const keepTheme = id === "level" || ((id === "play" || id === "over") && G && G.levelNo);
@@ -1042,6 +1065,9 @@
   $("#btn-rank").onclick = () => show("missions");
   $("#btn-duel").onclick = () => show("duel");
   $("#btn-settings").onclick = () => show("settings");
+  $("#tab-home").onclick = () => { sfx("ui"); show("menu"); };
+  $("#tab-levels").onclick = () => $("#btn-levels").click();
+  $("#btn-record").onclick = () => { sfx("ui"); show("ranking"); };
   $("#btn-share").onclick = () => shareRun();
 
   // ---------- menu ----------
@@ -1050,6 +1076,11 @@
     const rk = rankOf(S.xp);
     $("#rank-name").textContent = rk.name;
     $("#rank-bar").style.width = (rk.pct * 100).toFixed(1) + "%";
+    const nm = S.name || "Invité";
+    $("#menu-name").textContent = nm;
+    $("#menu-avatar").textContent = nm[0].toUpperCase();
+    $("#menu-best").textContent = S.bests[S.mode] || 0;
+    $("#menu-best-mode").textContent = MODES[S.mode].name;
     renderDaily();
     const doneCount = S.missions.list.filter((m) => m.done).length;
     const pill = $("#missions-pill"); pill.hidden = false; pill.textContent = `${doneCount}/3`;
@@ -1069,7 +1100,8 @@
     const d = DIFFICULTIES[S.difficulty];
     $("#mode-current").textContent = MODES[S.mode].name + (S.difficulty === "normal" ? "" : ` · ${d.name}`);
     $("#mode-rule").textContent = MODES[S.mode].rule;
-    $("#lv-count").textContent = `${Math.min(LV.COUNT, levelsCleared() + 1)} / ${LV.COUNT} · ★ ${totalStars()}`;
+    $("#lv-count").textContent = `${Math.min(LV.COUNT, levelsCleared() + 1)} / ${LV.COUNT}`;
+    $("#btn-levels small").textContent = `★ ${totalStars()} · Continuer ›`;
   }
   // Difficulty (modes only): 5 steps, with what each one changes for credits and the world board.
   function renderDifficulty() {
@@ -1987,6 +2019,7 @@
   window.__resume = () => updateMenuMusic();
   window.__back = () => {
     if (!$("#site-view").hidden) { closeSite(); return true; }
+    if (!$("#more-menu").hidden) { closeMore(); return true; }
     if (!$("#share-modal").hidden) { $("#share-modal").hidden = true; return true; }
     if (current === "play") {
       if (G && G.running && !G.paused) { pause(); return true; }
