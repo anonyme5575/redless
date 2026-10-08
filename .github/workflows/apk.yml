@@ -22,6 +22,23 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      # Clé de signature personnelle (secrets du dépôt, jamais dans le code) :
+      # RELEASE_KEYSTORE_B64 = le fichier .jks en base64, RELEASE_STORE_PASSWORD = son mot de passe.
+      - name: Clé de signature
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STORE_PASSWORD" ]; then
+            echo "::warning::Secrets RELEASE_KEYSTORE_B64 / RELEASE_STORE_PASSWORD absents : APK signé avec la clé de debug, pas publié."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/redless-release.jks"
+          {
+            echo "RELEASE_KEYSTORE=$RUNNER_TEMP/redless-release.jks"
+            echo "RELEASE_KEY_ALIAS=redless"
+            echo "RELEASE_STORE_PASSWORD=$STORE_PASSWORD"
+          } >> "$GITHUB_ENV"
       - run: android/build.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -29,12 +46,17 @@ jobs:
           path: dist/redless.apk
       # Fixed download link used by the « Mettre à jour » button of the Android app:
       # https://github.com/anonyme5575/redless/releases/download/latest/redless.apk
+      # Publié seulement s'il est signé avec la clé personnelle : un APK de debug ne pourrait pas
+      # s'installer par-dessus chez les joueurs.
       - name: Publier l'APK (release « latest »)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && env.RELEASE_KEYSTORE != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: Redless (dernière version)
-          body: "Dernière version de Redless pour Android. Télécharge redless.apk et installe-le par-dessus l'ancien : ta progression est gardée."
+          body: |
+            Dernière version de Redless pour Android. Télécharge redless.apk et installe-le par-dessus l'ancien : ta progression est gardée.
+
+            Tu avais installé Redless avant octobre 2026 et Android affiche « Application non installée » ? Une seule fois : crée un compte dans le jeu (Réglages → Compte) pour garder ta progression, désinstalle l'ancienne Redless, puis installe celle-ci.
           files: dist/redless.apk
           make_latest: true
