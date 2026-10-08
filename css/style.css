@@ -780,3 +780,75 @@ html, body { touch-action: manipulation; }
 .shop-list .item .name { font-size: 13.5px; }
 .set-select { max-width: 55%; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--panel); border: 1px solid var(--holo); padding: 7px 8px; }
 .set-select option { background: var(--bg); color: var(--ink); }
+
+/* ---------- Ordinateur : le jeu dans une console au centre, décor et panneaux autour ----------
+   Seulement avec une souris sur un grand écran : rien ne change sur téléphone, tablette ni dans l'app Android. */
+.desk { display: none; }
+@media (min-width: 900px) and (min-height: 560px) and (hover: hover) and (pointer: fine) {
+  html { background: #02060a; }
+  body {
+    display: flex; align-items: center; justify-content: center; gap: 44px;
+    background:
+      radial-gradient(55% 75% at 50% 50%, rgba(54, 201, 255, .12), transparent 70%),
+      linear-gradient(rgba(2, 6, 10, .74), rgba(2, 6, 10, .92)),
+      url("../assets/city.jpg") center / cover no-repeat fixed;
+  }
+  #app {
+    flex: none;
+    height: min(calc(100% - 48px), 980px);
+    width: auto; aspect-ratio: 10 / 17;
+    max-width: 580px;
+    margin: 0;
+    border-radius: 24px;
+    box-shadow:
+      0 0 0 2px var(--holo),
+      0 0 0 9px rgba(54, 201, 255, .07),
+      0 0 80px rgba(54, 201, 255, .22),
+      0 30px 90px rgba(0, 0, 0, .75);
+  }
+  /* Animation de démarrage et barre « Mettre à jour » : dans le cadre du jeu, pas sur tout l'écran. */
+  .splash, .update-bar { position: absolute; }
+}
+@media (min-width: 1180px) and (min-height: 560px) and (hover: hover) and (pointer: fine) {
+  .desk {
+    display: flex; flex-direction: column; gap: 18px;
+    width: 270px; flex: none;
+    color: #d9f4ff;
+  }
+  .desk-left { align-items: flex-start; }
+  .desk-logo {
+    font-family: var(--font-display); font-weight: 800; font-size: 46px; letter-spacing: .1em; text-transform: uppercase;
+    line-height: 1;
+  }
+  .desk-logo .t-red { color: #ff2d55; text-shadow: 0 0 18px rgba(255, 45, 85, .7); }
+  .desk-tag { margin: -8px 0 6px; color: #6d9cb5; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: 12px; }
+  .desk-card {
+    width: 100%; padding: 18px 20px;
+    background: rgba(8, 30, 46, .62);
+    box-shadow: inset 0 0 0 1px rgba(54, 201, 255, .35), 0 0 30px rgba(54, 201, 255, .08);
+    clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
+  }
+  .desk-card h2 {
+    margin: 0 0 12px; font-family: var(--font-display); font-size: 15px; letter-spacing: .16em; text-transform: uppercase; color: #36c9ff;
+  }
+  .desk-rules { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 10px; }
+  .desk-rules li { display: flex; align-items: center; gap: 12px; font-size: 15px; }
+  .dk { width: 22px; height: 22px; flex: none; clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
+  .dk-green { background: #2bff8a; box-shadow: 0 0 10px #2bff8a; }
+  .dk-red { background: #ff2d55; }
+  .dk-gold { background: #ffc84a; }
+  .dk-feint { background: linear-gradient(135deg, #2bff8a 50%, #ff2d55 50%); }
+  .desk-small { margin: 0 0 10px; color: #a9cfe0; font-size: 14px; line-height: 1.45; }
+  .desk-small:last-child { margin-bottom: 0; }
+  .desk-hint { color: #6d9cb5; }
+  .desk kbd { font-family: var(--font-display); padding: 1px 6px; border: 1px solid #36c9ff; color: #36c9ff; font-size: 12px; }
+  .desk-btn {
+    display: block; margin: 4px 0 14px; padding: 11px 14px; text-align: center; text-decoration: none;
+    font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: .12em; text-transform: uppercase;
+    background: #2bff8a; color: #032213;
+    clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+  }
+  .desk-btn:hover { filter: brightness(1.12); }
+  .desk-link { color: #36c9ff; font-weight: 700; letter-spacing: .06em; text-decoration: none; }
+  .desk-link:hover { text-decoration: underline; }
+}
