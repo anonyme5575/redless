@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.15";
+  const VERSION = "3.16";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -82,12 +82,14 @@
     mute: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
     pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
     back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+    globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>',
     share: '<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>',
     gear: '<svg viewBox="0 0 24 24"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
   };
   $("#btn-pause").innerHTML = ICONS.pause;
   $("#btn-settings").innerHTML = ICONS.gear;
   $("#btn-invite").innerHTML = ICONS.share;
+  $("#btn-site").innerHTML = ICONS.globe;
   const BACK_TO = { privacy: "settings", calib: "settings", profile: "ranking", level: "levels" };
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
@@ -1954,6 +1956,15 @@
     try { await navigator.clipboard.writeText(`${text} ${link}`); toast("Lien copié, colle-le à tes amis"); }
     catch { toast(link); }
   }
+  // Opens the presentation site: in the phone's browser from the Android app, in a new tab on the web.
+  function openSite() {
+    sfx("ui");
+    const link = "https://redless.taild80a87.ts.net/", n = NT.native();
+    if (n && n.openUrl) { n.openUrl(link); return; }
+    if (!window.open(link, "_blank", "noopener")) location.href = link;
+  }
+  $("#btn-site").onclick = openSite;
+  $("#btn-site-set").onclick = openSite;
   $("#btn-invite").onclick = shareGame;
   $("#btn-invite-set").onclick = shareGame;
   $("#btn-share-close").onclick = () => { $("#share-modal").hidden = true; };
