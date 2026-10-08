@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Confidentialité · Redless</title>
+<meta name="description" content="Ce que Redless fait (et ne fait pas) de tes données : pas de publicité, pas de position, e-mail facultatif.">
+<meta name="theme-color" content="#040a11">
+<link rel="icon" href="jouer/assets/icon-192.png">
+<link rel="stylesheet" href="site.css?v=6">
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="./"><span class="red">RED</span>LESS</a>
+  <nav>
+    <a href="./#regles">Le jeu</a>
+    <a href="./#modes">Modes</a>
+    <a href="./#classement">Classement</a>
+    <a href="./#telecharger">Télécharger</a>
+  </nav>
+  <a class="btn btn-small" href="jouer/">Jouer</a>
+</header>
+
+<main class="legal">
+  <a class="back" href="./">← Retour au site</a>
+  <p class="kicker">Tes données</p>
+  <h1>Politique de confidentialité</h1>
+  <p class="updated">Dernière mise à jour : 8 octobre 2026</p>
+
+  <section class="tldr">
+    <h2>En bref</h2>
+    <ul class="checks">
+      <li><b>Aucune publicité</b>, aucun pistage publicitaire.</li>
+      <li><b>Ni nom, ni contact, ni position</b> : le jeu ne les demande pas.</li>
+      <li>L'<b>adresse e-mail est facultative</b>, et sert seulement à retrouver ton compte.</li>
+      <li>Les données du classement sont hébergées dans l'<b>Union européenne</b>, et ne sont <b>ni vendues ni partagées</b>.</li>
+      <li>Tu peux <b>tout faire supprimer</b> quand tu veux.</li>
+    </ul>
+  </section>
+
+  <nav class="toc" aria-label="Sommaire">
+    <a href="#appareil">Sur ton appareil</a>
+    <a href="#compte">Compte</a>
+    <a href="#classement">Classement</a>
+    <a href="#installations">Installations</a>
+    <a href="#android">Android</a>
+    <a href="#site">Ce site</a>
+    <a href="#suppression">Suppression</a>
+  </nav>
+
+  <section id="appareil">
+    <h2>Ce qui reste sur ton appareil</h2>
+    <p>Tes crédits, records, réglages et la progression des missions sont enregistrés <b>sur ton appareil</b>, et nulle part ailleurs, sauf si tu protèges ton compte (voir ci-dessous).</p>
+  </section>
+
+  <section id="compte">
+    <h2>Compte protégé par e-mail <span class="tag">facultatif</span></h2>
+    <p>Dans <b>Réglages → Compte → « Protéger »</b>, tu peux lier une adresse e-mail à ton compte. Le serveur du jeu (Supabase, hébergé dans l'Union européenne) enregistre alors :</p>
+    <ul>
+      <li>ton <b>adresse e-mail</b>, utilisée uniquement pour t'envoyer un code à usage unique quand tu veux retrouver ton compte. Aucune publicité, aucun partage ;</li>
+      <li>une <b>sauvegarde de ta progression</b> : crédits, achats, records, missions et pseudo. Les volumes, les vibrations et le calibrage restent sur l'appareil.</li>
+    </ul>
+    <p>Il n'y a <b>pas de mot de passe</b> : chaque connexion se fait avec un code reçu par e-mail.</p>
+  </section>
+
+  <section id="classement">
+    <h2>Classement mondial</h2>
+    <p>Quand tu choisis un pseudo, le jeu envoie à son serveur (Supabase, Union européenne) :</p>
+    <ul>
+      <li>un <b>identifiant anonyme</b> créé pour ton appareil (sans e-mail, sauf si tu protèges ton compte) ;</li>
+      <li>ton <b>pseudo</b>, visible des autres joueurs ;</li>
+      <li>pour chaque partie : le <b>mode, le score, le niveau, le tempo et la durée</b>, avec la date d'envoi.</li>
+    </ul>
+    <p>Ces données servent uniquement au classement et à l'événement mensuel. Elles ne sont ni vendues ni partagées. Base légale : l'exécution du service que tu demandes (le classement).</p>
+  </section>
+
+  <section id="installations">
+    <h2>Compteur d'installations</h2>
+    <p>Au premier lancement de l'application installée (APK Android, ou appli ajoutée à l'écran d'accueil sur iPhone ou ordinateur), le jeu envoie <b>une seule fois</b> un signal anonyme : un identifiant aléatoire créé sur l'appareil, la plateforme et la version du jeu.</p>
+    <p>Il sert uniquement à compter les installations et à prévenir le créateur du jeu par e-mail. Aucune autre donnée n'est jointe.</p>
+  </section>
+
+  <section id="android">
+    <h2>Permissions Android</h2>
+    <dl class="perms">
+      <dt>Internet</dt><dd>Envoyer les scores et afficher le classement mondial.</dd>
+      <dt>Vibreur</dt><dd>Retours haptiques, désactivables dans les Réglages.</dd>
+    </dl>
+    <p><b>Partage du score</b> : l'image est créée sur ton appareil et transmise seulement à l'application que tu choisis. Sur Android 10 et plus, une copie est rangée dans <code>Images/Redless</code>.</p>
+  </section>
+
+  <section id="site">
+    <h2>Ce site</h2>
+    <p>Ce site ne dépose <b>aucun cookie</b> et n'utilise <b>aucun outil de mesure d'audience</b>. Pour afficher le classement, il le lit sur le serveur du jeu, sans rien y envoyer.</p>
+  </section>
+
+  <section id="suppression">
+    <h2>Supprimer tes données</h2>
+    <ul>
+      <li><b>Sur l'appareil</b> : Réglages → Progression → Effacer, ou désinstaller le jeu.</li>
+      <li><b>Sur le serveur</b> : ouvre une demande sur <a href="https://github.com/anonyme5575/redless/issues">github.com/anonyme5575/redless</a> en indiquant ton pseudo. Tes scores, ton pseudo, ton adresse e-mail et ta sauvegarde en ligne sont supprimés sous 30 jours.</li>
+    </ul>
+  </section>
+
+  <section id="enfants">
+    <h2>Enfants</h2>
+    <p>Le jeu ne demande aucune donnée d'identité. Ton pseudo ne doit pas contenir ton vrai nom.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <p class="brand"><span class="red">RED</span>LESS</p>
+  <p>© 2026 MyBlackWhite. Jeu et musiques originales : tous droits réservés.</p>
+  <p><a href="confidentialite.html">Confidentialité</a> · <a href="droits.html">Droits</a></p>
+</footer>
+</body>
+</html>
