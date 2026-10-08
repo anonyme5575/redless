@@ -151,6 +151,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outl
 
 /* ---------- menu ---------- */
 .menu-top { display: flex; justify-content: space-between; align-items: center; }
+.menu-icons { display: flex; align-items: center; }
 .sys { font-size: 11px; letter-spacing: .2em; color: var(--muted); text-transform: uppercase; }
 .sys b { color: var(--green); font-weight: 700; }
 .menu-hero { flex: 1; min-height: 0; display: grid; place-items: center; padding: 18px 26px; }

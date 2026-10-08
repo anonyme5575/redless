@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.14";
+  const VERSION = "3.15";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -82,10 +82,12 @@
     mute: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
     pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
     back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>',
     gear: '<svg viewBox="0 0 24 24"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
   };
   $("#btn-pause").innerHTML = ICONS.pause;
   $("#btn-settings").innerHTML = ICONS.gear;
+  $("#btn-invite").innerHTML = ICONS.share;
   const BACK_TO = { privacy: "settings", calib: "settings", profile: "ranking", level: "levels" };
   document.querySelectorAll(".back").forEach((b) => {
     b.innerHTML = ICONS.back;
@@ -1938,6 +1940,22 @@
       fx.initFrames($("#share-modal")); fx.redrawFrames($("#share-modal"));
     } finally { btn.disabled = false; }
   }
+  // Invite friends: sends the site link through the phone's share menu (WhatsApp, SMS…).
+  async function shareGame() {
+    sfx("ui");
+    const link = "https://redless.taild80a87.ts.net/";
+    const text = "Viens jouer à Redless ! Touche le vert, jamais le rouge. C'est gratuit :";
+    const n = NT.native();
+    if (n && n.shareText) { n.shareText(`${text} ${link}`); return; }
+    if (navigator.share) {
+      try { await navigator.share({ title: "Redless", text, url: link }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(`${text} ${link}`); toast("Lien copié, colle-le à tes amis"); }
+    catch { toast(link); }
+  }
+  $("#btn-invite").onclick = shareGame;
+  $("#btn-invite-set").onclick = shareGame;
   $("#btn-share-close").onclick = () => { $("#share-modal").hidden = true; };
   $("#btn-share-copy").onclick = async () => {
     const text = shareText();
