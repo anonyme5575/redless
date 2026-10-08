@@ -17,6 +17,25 @@
     return res.json();
   }
 
+  // ---------- iPhone / Android : le bon bouton d'installation ----------
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  // Autres navigateurs sur iPhone (Chrome, Firefox, appli Instagram…) : moins pratiques pour installer.
+  const inSafari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|Instagram|FBAN|FBAV|Snapchat|TikTok/.test(ua);
+  document.documentElement.classList.add(isIOS ? "is-ios" : isAndroid ? "is-android" : "is-desktop");
+  const heroDl = $("#hero-dl");
+  if (heroDl && isIOS) { heroDl.textContent = "Installer sur iPhone"; heroDl.href = "iphone.html"; }
+  if (heroDl && isAndroid) { heroDl.textContent = "Télécharger pour Android"; heroDl.href = "redless.apk"; heroDl.setAttribute("download", ""); }
+  const notSafari = $("#ios-not-safari");
+  if (notSafari && isIOS && !inSafari) notSafari.hidden = false;
+  const copyBtn = $("#copy-game-link");
+  if (copyBtn) copyBtn.addEventListener("click", async () => {
+    const link = new URL("jouer/", location.href).href;
+    try { await navigator.clipboard.writeText(link); copyBtn.textContent = "Lien copié ✓"; }
+    catch { prompt("Copie ce lien, puis colle-le dans Safari :", link); }
+  });
+
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const day = (iso) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 
@@ -29,6 +48,7 @@
   // ---------- Classement mondial ----------
   async function loadBoard() {
     const board = $("#board");
+    if (!board) return; // page sans classement
     try {
       const [info] = await rpc("event_info").catch(() => [null]);
       if (info) {
@@ -116,6 +136,7 @@
 
   // ---------- Démo jouable ----------
   const grid = $("#demo-grid"), overlay = $("#demo-overlay");
+  if (!grid) return; // page sans démo
   const cells = [];
   for (let i = 0; i < 12; i++) {
     const b = document.createElement("button");
