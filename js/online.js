@@ -3,7 +3,7 @@
 // which checks them. Failed sends wait in a local queue and are retried later.
 (() => {
   "use strict";
-  const AUTH = "redless-auth", QUEUE = "redless-pending", DEVICE = "redless-device", INSTALL = "redless-install", SERVER = "redless-server", EMAIL = "redless-email";
+  const AUTH = "redless-auth", QUEUE = "redless-pending", POINTS = "redless-points", DEVICE = "redless-device", INSTALL = "redless-install", SERVER = "redless-server", EMAIL = "redless-email";
   const GLOBAL_MODES = ["classic", "chrono", "sudden", "feint", "expansion", "rhythm", "mirror", "chaos"];
 
   const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -67,38 +67,48 @@
     }
   }
 
-  // Score sending. Returns {season, best, rank, players} or {queued:true}.
+  // Points: the phone adds up the points of its ranked games and sends the sum (one write on the
+  // server per send). Offline, the points keep adding up here and leave together later.
+  // Scores waiting from an older version (one entry per game) join the sum.
+  const old = read(QUEUE, []);
+  if (old.length) {
+    const p = read(POINTS, null) || { points: 0, ms: 0, games: 0 };
+    for (const r of old) if (r.p_score > 0) { p.points += r.p_score; p.ms += Math.max(3000, r.p_duration_ms || 0); p.games++; }
+    write(POINTS, p.games ? p : null); write(QUEUE, null);
+  }
+  const pendingPoints = () => read(POINTS, null);
+  // Adds one game. Returns {season, total, rank, players}, {queued:true} or null.
   async function submit(run, name) {
     if (!enabled || !GLOBAL_MODES.includes(run.mode) || run.score <= 0) return null;
-    const p = { p_mode: run.mode, p_score: run.score, p_level: run.level, p_bpm: run.bpm, p_duration_ms: Math.round(run.duration), p_name: name || null };
-    try {
-      const rows = await rpc("submit_score", p, true);
-      return rows && rows[0];
-    } catch (e) {
-      if (e.offline) { const q = read(QUEUE, []); q.push({ ...p, t: Date.now() }); write(QUEUE, q.slice(-20)); return { queued: true }; }
-      throw e;
-    }
+    const p = pendingPoints() || { points: 0, ms: 0, games: 0 };
+    p.points += run.score; p.ms += Math.max(3000, Math.round(run.duration)); p.games++;
+    write(POINTS, p);
+    return send(name);
   }
-  // Retries queued scores one by one (the server refuses more than one every 5 s).
-  let flushing = false;
-  async function flush(name) {
-    if (!enabled || flushing) return;
-    const q = read(QUEUE, []); if (!q.length) return;
-    flushing = true;
-    try {
-      while (q.length) {
-        const { t, ...p } = q[0];
-        if (!p.p_name && name) p.p_name = name;
-        try { await rpc("submit_score", p, true); }
-        catch (e) { if (e.offline) break; if (/trop rapide/.test(e.message)) { await new Promise((r) => setTimeout(r, 5500)); continue; } }
-        q.shift(); write(QUEUE, q);
+  let sending = null;
+  async function send(name) {
+    if (sending) { await sending.catch(() => {}); }
+    const p = pendingPoints();
+    if (!enabled || !p || !p.games) return null;
+    const run = (async () => {
+      try {
+        const rows = await rpc("add_points", { p_points: p.points, p_duration_ms: p.ms, p_games: p.games, p_name: name || null }, true);
+        // Points added during the send stay for next time.
+        const now = pendingPoints() || p, left = { points: now.points - p.points, ms: now.ms - p.ms, games: now.games - p.games };
+        write(POINTS, left.games > 0 ? left : null);
+        return rows && rows[0];
+      } catch (e) {
+        if (e.offline || /trop rapide/.test(e.message)) return { queued: true };
+        throw e;
       }
-    } finally { flushing = false; }
+    })();
+    sending = run;
+    try { return await run; } finally { if (sending === run) sending = null; }
   }
-  const leaderboard = (mode, season = null, limit = 50) => rpc("get_leaderboard", { p_mode: mode, p_season: season, p_limit: limit }, false);
-  // One row per player (total of their best scores in every mode), and one player's scores mode by mode.
+  const flush = (name) => send(name).catch(() => {});
+
+  // One row per player: total of the points of the season, and number of games.
   const overall = (season = null, limit = 100) => rpc("get_overall", { p_season: season, p_limit: limit }, false);
-  const profile = (name, season = null) => rpc("get_profile", { p_name: name, p_season: season }, false);
   // Number of people who came (one account per device). Null if the server lacks the function.
   async function visitors() {
     try { return Number(await rpc("visitor_count", {}, false)); }
@@ -172,7 +182,7 @@
     write(INSTALL, "sent");
   }
   // Back to a fresh anonymous account on this phone (the protected account stays on the server).
-  function logout() { session = null; [AUTH, EMAIL, QUEUE].forEach((k) => write(k, null)); }
+  function logout() { session = null; [AUTH, EMAIL, QUEUE, POINTS].forEach((k) => write(k, null)); }
 
   const pushSave = (data) => rpc("save_progress", { p_data: data }, true);
   async function pullSave() { const r = await rpc("load_progress", {}, true); return r && r[0]; }
@@ -189,7 +199,7 @@
 
   window.addEventListener("online", () => connect());
   NT.online = {
-    enabled, GLOBAL_MODES, submit, flush, leaderboard, overall, profile, eventInfo, rename, registerInstall, pending: () => read(QUEUE, []).length,
+    enabled, GLOBAL_MODES, submit, send, flush, overall, eventInfo, rename, registerInstall, pending: () => (pendingPoints() || { games: 0 }).games,
     connect, connected, nameFree, visitors, email, linkEmail, confirmLink, sendLogin, confirmLogin, logout, pushSave, pullSave,
   };
 })();

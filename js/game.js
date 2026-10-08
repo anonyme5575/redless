@@ -4,7 +4,7 @@
   const LV = NT.levels;
   const { Music, MenuMusic, Synth, haptic } = NT;
   const fx = NT.fx;
-  const VERSION = "3.21";
+  const VERSION = "3.22";
 
   // ---------- storage (may be unavailable) ----------
   const KEY = "ntplr-save-v1";
@@ -955,7 +955,8 @@
   let unsentRun = null;
   const ordinal = (n) => (n === 1 ? "1er" : n + "e");
   const autoName = () => "Pilote-" + String(1000 + ((Math.random() * 9000) | 0));
-  async function onlineSubmit(run) {
+  // retry: the game's points are already waiting on the phone, only send them again.
+  async function onlineSubmit(run, retry = false) {
     const el = $("#over-online");
     unsentRun = null;
     if (!NT.online.enabled || !NT.online.GLOBAL_MODES.includes(run.mode) || run.score <= 0) { el.hidden = true; return; }
@@ -966,16 +967,16 @@
     el.textContent = "Envoi au classement mondial…";
     try {
       let r;
-      try { r = await NT.online.submit(run, S.name); }
+      try { r = retry ? await NT.online.send(S.name) : await NT.online.submit(run, S.name); }
       catch (e) {
         if (!auto || !/déjà pris/.test(e.message)) throw e;
         S.name = autoName(); save();
-        r = await NT.online.submit(run, S.name);
+        r = await NT.online.send(S.name);
       }
       if (!r) { el.hidden = true; return; }
-      if (r.queued) { el.textContent = "Hors ligne : ton score sera envoyé au classement mondial au retour du réseau."; return; }
+      if (r.queued) { el.textContent = "Tes points sont gardés : ils partiront au classement mondial dès que possible."; return; }
       el.className = "over-online ok";
-      el.textContent = `Mondial ${MODES[run.mode].name} : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton meilleur score : ${r.best}`
+      el.textContent = `Mondial : ${ordinal(r.rank)} ${r.season ? `de la saison ${r.season}` : "de la pré-saison"} · ton total : ${r.total} points`
         + (auto ? ` · ton pseudo : ${S.name} (à changer ci-dessous ou dans Réglages)` : "");
       if (auto) { $("#name-form").hidden = false; $("#name-input").value = S.name; }
     } catch (e) {
@@ -992,7 +993,7 @@
     S.name = name; save();
     $("#name-input").blur();
     toast("Pseudo enregistré");
-    if (unsentRun) onlineSubmit(unsentRun);
+    if (unsentRun) onlineSubmit(unsentRun, true);
     else if (changed && NT.online.enabled) NT.online.rename(name).catch((e) => !e.offline && toast(e.message));
   });
 
@@ -1413,7 +1414,7 @@
     } else {
       const st = new Date(info.season_start).getTime(), en = new Date(info.season_end).getTime();
       main.textContent = `Saison ${info.season} · fin dans ${fmtLeft(en - now)}`;
-      sub.textContent = "Total de tous les modes. Remise à zéro chaque mois.";
+      sub.textContent = "Total de tous tes points. Remise à zéro chaque mois.";
       bar.style.width = Math.min(100, ((now - st) / (en - st)) * 100) + "%";
     }
     fx.initFrames($("#event-card")); fx.redrawFrames($("#event-card"));
@@ -1435,51 +1436,15 @@
       let last = 0;
       rows.forEach((r, k) => {
         if (r.rank > last + 1 && last > 0) { const gap = document.createElement("li"); gap.className = "gap"; gap.textContent = "…"; ol.appendChild(gap); }
-        const small = `${r.modes} mode${r.modes > 1 ? "s" : ""} joué${r.modes > 1 ? "s" : ""}${r.is_me ? " · toi" : ""}`;
-        ol.appendChild(boardRow(r.rank, r.name, small, r.total, r.is_me, k, () => openProfile(r)));
+        const n = r.games ?? r.modes;
+        const small = `${n} partie${n > 1 ? "s" : ""}${r.is_me ? " · toi" : ""}`;
+        ol.appendChild(boardRow(r.rank, r.name, small, r.total, r.is_me, k));
         last = r.rank;
       });
     } catch (e) {
       if (req !== boardReq) return;
       ol.innerHTML = "";
       ol.appendChild(emptyRow(e.offline ? "Pas de connexion. Le classement mondial s'affichera dès que tu seras en ligne." : `Classement indisponible : ${e.message}`));
-    }
-  }
-
-  // Player profile: overall rank and total, then the best score of the season in each mode.
-  let profReq = 0;
-  async function openProfile(row) {
-    const req = ++profReq;
-    $("#prof-name").textContent = row.name;
-    $("#prof-rank").textContent = `${ordinal(row.rank)} au classement mondial`;
-    $("#prof-total").textContent = row.total;
-    $("#prof-sub").textContent = "points au total cette saison";
-    const ul = $("#prof-modes"); ul.innerHTML = "";
-    ul.appendChild(emptyRow("Chargement…"));
-    show("profile");
-    try {
-      const rows = (await NT.online.profile(row.name, boardSeason)) || [];
-      if (req !== profReq || current !== "profile") return;
-      ul.innerHTML = "";
-      const byMode = Object.fromEntries(rows.map((r) => [r.mode, r]));
-      // Played modes first (best score first), then the others.
-      const ids = [...rows.map((r) => r.mode), ...NT.online.GLOBAL_MODES.filter((id) => !byMode[id])];
-      ids.forEach((id, k) => {
-        if (!MODES[id]) return;
-        const r = byMode[id], li = document.createElement("li");
-        li.className = "prof-mode" + (r ? "" : " none"); li.dataset.frame = "sm";
-        li.innerHTML = `<span class="pm-name"></span><span class="pm-info"></span><b class="num pm-score"></b>`;
-        li.querySelector(".pm-name").textContent = MODES[id].name;
-        li.querySelector(".pm-info").textContent = r ? `${ordinal(r.rank)} · niveau ${r.level} · ${r.bpm} BPM` : "Pas encore joué";
-        li.querySelector(".pm-score").textContent = r ? r.score : "—";
-        if (!reduceMotion) li.style.animation = `boot .4s ${Math.min(k, 8) * 40}ms both`;
-        ul.appendChild(li);
-      });
-      fx.initFrames(ul);
-    } catch (e) {
-      if (req !== profReq) return;
-      ul.innerHTML = "";
-      ul.appendChild(emptyRow(e.offline ? "Pas de connexion." : `Profil indisponible : ${e.message}`));
     }
   }
 

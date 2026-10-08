@@ -82,7 +82,7 @@
       board.innerHTML = rows.map((r) => `
         <div class="row">
           <span class="rank">#${r.rank}</span>
-          <span class="name">${esc(r.name)}<small>${r.modes} mode${r.modes > 1 ? "s" : ""} joué${r.modes > 1 ? "s" : ""}</small></span>
+          <span class="name">${esc(r.name)}<small>${r.games ?? r.modes} partie${(r.games ?? r.modes) > 1 ? "s" : ""}</small></span>
           <span class="total">${Number(r.total).toLocaleString("fr-FR")}</span>
         </div>`).join("");
     } catch {
