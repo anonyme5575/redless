@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Redless : touche le vert, jamais le rouge</title>
+<meta name="description" content="Redless, le jeu de réflexes en rythme : un doigt, une règle, une musique qui accélère sans fin. Gratuit, sans publicité, sur Android, iPhone et navigateur.">
+<meta name="theme-color" content="#040a11">
+<meta property="og:title" content="Redless : touche le vert, jamais le rouge">
+<meta property="og:description" content="Un doigt. Une règle. Une musique qui accélère sans fin. Gratuit et sans publicité.">
+<meta property="og:image" content="img/2-partie.jpg">
+<link rel="icon" href="jouer/assets/icon-192.png">
+<link rel="apple-touch-icon" href="jouer/assets/icon-180.png">
+<link rel="stylesheet" href="site.css">
+<script>
+  // Redless installé sur l'écran d'accueil (ancienne adresse) : on va directement au jeu.
+  if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) location.replace("jouer/");
+</script>
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+<div class="rain" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="#"><span class="red">RED</span>LESS</a>
+  <nav>
+    <a href="#regles">Le jeu</a>
+    <a href="#modes">Modes</a>
+    <a href="#classement">Classement</a>
+    <a href="#telecharger">Télécharger</a>
+    <a href="#nouveautes">Nouveautés</a>
+  </nav>
+  <a class="btn btn-small" href="jouer/">Jouer</a>
+</header>
+
+<main>
+  <!-- ============ Accueil ============ -->
+  <section class="hero">
+    <div class="hero-text">
+      <p class="kicker">Jeu de réflexes en rythme · gratuit · sans publicité</p>
+      <h1 class="logo"><span class="red">RED</span>LESS</h1>
+      <p class="tagline">Touche le vert. Jamais le rouge.</p>
+      <p class="lead">Un doigt, une seule règle. Les cases tombent sur les temps de la musique, et la musique <strong>accélère sans fin</strong>. Au début c'est calme. Quelques minutes plus tard, tu joues à 180&nbsp;BPM et les cases commencent à mentir.</p>
+      <div class="cta">
+        <a class="btn btn-go" href="jouer/">Jouer maintenant</a>
+        <a class="btn btn-ghost" href="#telecharger">Télécharger l'app</a>
+      </div>
+      <p class="meta">Version <span data-version>3.13</span> · Android, iPhone et navigateur</p>
+    </div>
+
+    <!-- Démo jouable : la même règle, en 3×4 -->
+    <div class="phone" aria-label="Démo jouable">
+      <div class="phone-hud">
+        <div><small>SCORE</small><b id="demo-score">0</b></div>
+        <div><small>VIES</small><b id="demo-lives">3</b></div>
+        <div><small>BPM</small><b id="demo-bpm">70</b></div>
+      </div>
+      <div class="demo-grid" id="demo-grid"></div>
+      <div class="demo-overlay" id="demo-overlay">
+        <p id="demo-title">Essaie tout de suite</p>
+        <p id="demo-text">Touche les cases <span class="g">vertes</span>, jamais les <span class="r">rouges</span>.</p>
+        <button class="btn btn-go" id="demo-start">Essayer</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Chiffres ============ -->
+  <section class="stats">
+    <div><b data-players>…</b><span>joueurs inscrits</span></div>
+    <div><b>10</b><span>modes de jeu</span></div>
+    <div><b>200</b><span>niveaux de campagne</span></div>
+    <div><b>21</b><span>musiques</span></div>
+  </section>
+
+  <!-- ============ Règles ============ -->
+  <section id="regles" class="block">
+    <h2>Comment on joue</h2>
+    <p class="intro">Tout tient en une règle. Le reste, c'est la musique qui te pousse à te tromper.</p>
+    <div class="cards">
+      <article class="card"><div class="tile tile-green">○</div><h3>Vert : touche</h3><p>Chaque case verte touchée rapporte des points. En laisser filer une coûte une vie.</p></article>
+      <article class="card"><div class="tile tile-red">✕</div><h3>Rouge : jamais</h3><p>Une case rouge touchée, et la partie s'arrête. Pas de deuxième chance.</p></article>
+      <article class="card"><div class="tile tile-gold">★</div><h3>Doré : bonus</h3><p>Les étoiles dorées rapportent 5 crédits pour la boutique.</p></article>
+      <article class="card"><div class="tile tile-feint">⇄</div><h3>Les fintes</h3><p>Vert qui vire au rouge, rouge qui devient vert, cases qui clignotent : elles valent double, si tu ne te fais pas avoir.</p></article>
+      <article class="card"><div class="tile tile-special"><i class="b"></i><i class="v"></i><i class="k"></i></div><h3>Les spéciales</h3><p><span class="c-blue">Bleue</span> ralentit le tempo 3&nbsp;s, <span class="c-violet">violette</span> efface les rouges, <b>noire</b> : garde le doigt appuyé.</p></article>
+      <article class="card"><div class="tile tile-boss">☠</div><h3>Boss et combos</h3><p>Un boss tous les 5 niveaux : 15&nbsp;s de pièges, +50 points si tu survis. Les combos montent jusqu'à ×4.</p></article>
+    </div>
+  </section>
+
+  <!-- ============ Captures ============ -->
+  <section id="captures" class="block">
+    <h2>Dans le cockpit</h2>
+    <p class="intro">Une interface de cockpit holographique, une ville sous la pluie, et des cases qui ne te laissent jamais souffler.</p>
+    <div class="shots">
+      <figure><img src="img/2-partie.jpg" alt="Une partie en mode Classique" loading="lazy" width="540" height="960"><figcaption>Une partie en Classique</figcaption></figure>
+      <figure><img src="img/3-expansion.jpg" alt="Le mode Expansion" loading="lazy" width="540" height="960"><figcaption>Expansion : la grille grandit</figcaption></figure>
+      <figure><img src="img/4-miroir.jpg" alt="Le mode Miroir" loading="lazy" width="540" height="960"><figcaption>Miroir : les couleurs s'inversent</figcaption></figure>
+      <figure><img src="img/5-fin.jpg" alt="L'écran de fin de partie" loading="lazy" width="540" height="960"><figcaption>L'écran de fin explique ton erreur</figcaption></figure>
+      <figure><img src="img/6-missions.jpg" alt="Les missions du jour" loading="lazy" width="540" height="960"><figcaption>3 missions par jour</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ============ Modes ============ -->
+  <section id="modes" class="block">
+    <h2>10 façons de perdre</h2>
+    <p class="intro">Chaque mode change une seule chose. C'est largement assez.</p>
+    <div class="modes">
+      <article><h3>Classique</h3><p>3 vies, un palier tous les 8 verts. La base, et déjà pas facile.</p></article>
+      <article><h3>Chrono</h3><p>60 secondes pour marquer un maximum. Toucher un rouge coûte 5 secondes.</p></article>
+      <article><h3>Mort subite</h3><p>Une seule vie. Une seule erreur et c'est fini.</p></article>
+      <article><h3>Fintes</h3><p>Plus de la moitié des cases changent de couleur au dernier moment.</p></article>
+      <article><h3>Expansion</h3><p>La grille passe de 2×3 à 7×9 cases. Tes yeux vont courir.</p></article>
+      <article><h3>Rythme</h3><p>Touche quand l'anneau se referme. Vise le « Parfait » (±70&nbsp;ms).</p></article>
+      <article><h3>Miroir</h3><p>Tous les 16 temps, la couleur à toucher s'inverse. Le vert devient l'ennemi.</p></article>
+      <article class="hot"><h3>Chaos</h3><p>Le plateau tourne, se retourne, zoome. Séisme, tornade, brouillard… et une téléportation à la ferme pour un mini-jeu avec une poule.</p></article>
+      <article><h3>Défi du jour</h3><p>La même partie pour tout le monde, un seul essai officiel par jour.</p></article>
+      <article><h3>Duel</h3><p>Un code de 5 caractères : ton ami joue exactement la même suite de cases que toi.</p></article>
+    </div>
+    <p class="note">5 difficultés, de <b>Facile</b> à <b>Impossible</b> : tempo, fintes, vies et crédits changent (×0,5 à ×3).</p>
+  </section>
+
+  <!-- ============ Campagne, boutique, musique ============ -->
+  <section class="block features">
+    <article class="feature">
+      <h2>200 niveaux</h2>
+      <p>Une campagne de 20 mondes de 10 niveaux, chacun avec ses couleurs, son mode et <b>3 quêtes</b>. Réussis-les toutes pour débloquer le thème du niveau.</p>
+    </article>
+    <article class="feature">
+      <h2>Ta boutique</h2>
+      <p>Thèmes holographiques, effets (spirale, étoiles, flammes, glitch, nova…), formes de cases et fonds. Essaie avant d'acheter, avec les crédits gagnés en jouant. Rien à payer, jamais.</p>
+    </article>
+    <article class="feature">
+      <h2>21 musiques</h2>
+      <p>Les cases tombent sur les temps : la musique, c'est l'horloge du jeu. 4 musiques d'origine dont « Sync or Die », et 17 musiques libres à débloquer.</p>
+    </article>
+  </section>
+
+  <!-- ============ Classement ============ -->
+  <section id="classement" class="block">
+    <h2>Classement mondial</h2>
+    <p class="intro" id="season-text">Chargement du classement…</p>
+    <div class="board" id="board" aria-live="polite"></div>
+    <p class="note">Le total des meilleurs scores de chaque joueur, dans tous les modes. Mis à jour en direct.</p>
+  </section>
+
+  <!-- ============ Télécharger ============ -->
+  <section id="telecharger" class="block">
+    <h2>Télécharger Redless</h2>
+    <p class="intro">Gratuit, sans publicité, et ça marche même hors ligne.</p>
+    <div class="cards three">
+      <article class="card dl">
+        <h3>🤖 Android</h3>
+        <ol>
+          <li>Télécharge le fichier <b>redless.apk</b>.</li>
+          <li>Ouvre-le : Android demande d'autoriser l'installation, accepte.</li>
+          <li>C'est installé. Les mises à jour te sont proposées dans le jeu.</li>
+        </ol>
+        <a class="btn btn-go" id="apk-link" href="https://github.com/anonyme5575/redless/releases/download/latest/redless.apk">Télécharger l'APK</a>
+      </article>
+      <article class="card dl">
+        <h3>🍏 iPhone et iPad</h3>
+        <ol>
+          <li>Ouvre <b>le jeu</b> dans <b>Safari</b>.</li>
+          <li>Touche <b>Partager</b> (le carré avec la flèche).</li>
+          <li>Choisis <b>« Sur l'écran d'accueil »</b> : Redless s'installe comme une app, en plein écran.</li>
+        </ol>
+        <a class="btn btn-ghost" href="jouer/">Ouvrir le jeu</a>
+      </article>
+      <article class="card dl">
+        <h3>💻 Navigateur</h3>
+        <ol>
+          <li>Rien à installer : le jeu tourne directement dans ton navigateur.</li>
+          <li>Sur ordinateur, joue à la souris.</li>
+          <li>Ta progression est gardée, et un compte permet de la retrouver ailleurs.</li>
+        </ol>
+        <a class="btn btn-ghost" href="jouer/">Jouer dans le navigateur</a>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ Nouveautés ============ -->
+  <section id="nouveautes" class="block">
+    <h2>Nouveautés</h2>
+    <ol class="timeline">
+      <li><b>3.13</b><p>Redless a son propre serveur et son site. Les mises à jour arrivent toujours toutes seules.</p></li>
+      <li><b>3.12</b><p>Nouveau tempo : départ plus doux, puis accélération <b>sans aucune limite</b>. La musique suit jusqu'à 2×, ensuite les cases tombent entre les temps.</p></li>
+      <li><b>3.11</b><p>Droits et mentions des musiques au nom de MyBlackWhite.</p></li>
+      <li><b>3.10</b><p>Le menu affiche combien de joueurs sont venus.</p></li>
+      <li><b>3.9</b><p>Chaos encore plus fou : Séisme, Tornade, Mélange, Gelée, Brouillard, Géant, Déluge… et la poule de la ferme.</p></li>
+      <li><b>3.8</b><p>Nouveau mode <b>Chaos</b> : plateau qui tourne, se retourne, zoome, et téléportation dans un mini-jeu.</p></li>
+      <li><b>3.5 – 3.7</b><p>Écran de connexion au lancement, compte protégé par e-mail (sans mot de passe), bouton « Se déconnecter ».</p></li>
+      <li><b>3.4</b><p>Menus rangés, et 17 nouvelles musiques libres à débloquer.</p></li>
+      <li><b>3.3</b><p>La campagne de <b>200 niveaux</b>, 5 difficultés et une boutique géante.</p></li>
+      <li><b>2.7 – 2.9</b><p>Classement général, fiche joueur, boutique avec défis, effets, et la barre « Mettre à jour ».</p></li>
+    </ol>
+  </section>
+</main>
+
+<footer class="foot">
+  <p class="brand"><span class="red">RED</span>LESS</p>
+  <p>© 2026 MyBlackWhite. Jeu et musiques originales : tous droits réservés.</p>
+  <p><a href="jouer/PRIVACY.md">Confidentialité</a> · <a href="jouer/COPYRIGHT.md">Droits</a></p>
+</footer>
+
+<script src="site.js"></script>
+</body>
+</html>
