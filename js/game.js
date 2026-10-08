@@ -1062,7 +1062,6 @@
   $("#btn-board").onclick = () => show("ranking");
   $("#btn-over-menu").onclick = () => { if (G && G.levelNo) { worldShown = Math.floor((G.levelNo - 1) / 10); show("levels"); } else show("menu"); };
   $("#btn-missions").onclick = () => show("missions");
-  $("#btn-rank").onclick = () => show("missions");
   $("#btn-duel").onclick = () => show("duel");
   $("#btn-settings").onclick = () => show("settings");
   $("#tab-home").onclick = () => { sfx("ui"); show("menu"); };
